@@ -1,0 +1,43 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: invoiceflow
+servers: 1
+agents: 2
+image: rancher/k3s:v1.35.5-k3s1
+kubeAPI:
+  hostIP: 127.0.0.1
+  hostPort: "6550"
+# Colima forwards host ports below 1024 on all interfaces, so unprivileged ports keep ingress local
+ports:
+  - port: 127.0.0.1:8080:80
+    nodeFilters:
+      - loadbalancer
+  - port: 127.0.0.1:8443:443
+    nodeFilters:
+      - loadbalancer
+registries:
+  create:
+    name: invoiceflow-registry
+    host: 127.0.0.1
+    hostPort: "5001"
+  # Same image names on the host (docker push) and in the cluster
+  config: |
+    mirrors:
+      "localhost:5001":
+        endpoint:
+          - http://invoiceflow-registry:5000
+volumes:
+  # Backups must survive deleting the cluster, so they live on the host
+  - volume: ${INVOICEFLOW_BACKUP_DIR}:/var/backups/invoiceflow
+    nodeFilters:
+      - all
+options:
+  k3s:
+    extraArgs:
+      - arg: --secrets-encryption
+        nodeFilters:
+          - server:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true
