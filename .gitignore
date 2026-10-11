@@ -1,0 +1,29 @@
+# .NET
+bin/
+obj/
+*.user
+TestResults/
+coverage/
+StrykerOutput/
+
+# Node and Angular
+node_modules/
+dist/
+.angular/
+playwright-report/
+test-results/
+
+# IDE
+.vs/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# macOS
+.DS_Store
+
+# Local environment
+.envrc
+.env
+.kube/
+*.pem
