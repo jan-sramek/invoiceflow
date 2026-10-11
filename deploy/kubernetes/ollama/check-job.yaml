@@ -1,0 +1,41 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ollama-check
+  namespace: invoiceflow
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: curl
+          image: curlimages/curl:8.22.0@sha256:58adaa4e8dca9c988bae2aba4ab3434a0bb2da16bbe3f92dec39ec7785166777
+          command:
+            - sh
+            - -c
+            # Ollama on loopback rejects Host headers that are not local names; the FQDN ends in .local
+            - |
+              curl -sSf --max-time 60 http://ollama.invoiceflow.svc.cluster.local:11434/api/generate \
+                -d '{"model":"qwen3:0.6b","prompt":"Reply with the single word: pong","stream":false,"think":false,"options":{"temperature":0}}'
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 32Mi

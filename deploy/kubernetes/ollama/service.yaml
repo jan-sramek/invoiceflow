@@ -1,0 +1,31 @@
+# Ollama runs natively on macOS for GPU access. A Service without a selector plus a
+# manually managed EndpointSlice gives pods a normal DNS name for it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: invoiceflow
+spec:
+  ports:
+    - name: http
+      port: 11434
+      targetPort: 11434
+      protocol: TCP
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: ollama-host
+  namespace: invoiceflow
+  labels:
+    kubernetes.io/service-name: ollama
+    endpointslice.kubernetes.io/managed-by: invoiceflow
+addressType: IPv4
+ports:
+  - name: http
+    port: 11434
+    protocol: TCP
+endpoints:
+  # Colima maps this address to the macOS host's loopback interface
+  - addresses:
+      - 192.168.5.2
