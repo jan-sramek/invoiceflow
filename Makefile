@@ -9,7 +9,7 @@ export INVOICEFLOW_BACKUP_DIR ?= $(HOME)/.local/share/invoiceflow/backups
 KUBECTL := kubectl --context $(CONTEXT)
 
 .DEFAULT_GOAL := help
-.PHONY: help doctor cluster-up cluster-down cluster-status ollama-up ollama-down
+.PHONY: help doctor cluster-up cluster-down cluster-status ollama-up ollama-down ollama-check
 
 help:
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -47,3 +47,6 @@ ollama-up: ## Start Ollama on the host, listening on localhost only
 
 ollama-down: ## Stop Ollama
 	@pkill -f "ollama serve" && echo "Ollama stopped" || echo "Ollama was not running"
+
+ollama-check: doctor ## Call Ollama on the host from a pod in the cluster
+	@./scripts/ollama-check.sh
