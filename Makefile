@@ -18,16 +18,18 @@ OBSERVABILITY_NS := invoiceflow-observability
 COLLECTOR_NS := invoiceflow-collector
 INFRA_NS := invoiceflow-infra
 DB_FORWARD_PORT := 15432
+S3_FORWARD_PORT := 18333
 DASHBOARD_IMAGE := $(shell grep -o 'mcr.microsoft.com/dotnet/aspire-dashboard[^ ]*' deploy/observability/aspire-dashboard.yaml)
 DASHBOARD_TOKEN_PATTERN := login?t=[0-9a-f]*
 
 .DEFAULT_GOAL := help
 .PHONY: help up down doctor cluster-up cluster-down cluster-status ollama-up ollama-down ollama-check \
 	observability-up observability-down grafana-password dashboard-url telemetry-check dashboard-up dashboard-down \
-	postgres-up postgres-down postgres-password db-forward psql
+	postgres-up postgres-down postgres-password db-forward psql \
+	seaweedfs-up seaweedfs-down s3-credentials s3-forward s3-check
 
 help:
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
+	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
 
 up: ## Start the VM, the cluster and Ollama
 	@if colima status --profile $(CLUSTER) >/dev/null 2>&1; then \
@@ -145,3 +147,24 @@ db-forward: doctor ## Forward PostgreSQL to localhost:15432 (Ctrl+C to stop)
 
 psql: doctor ## Open psql as the superuser inside the PostgreSQL pod
 	@$(KUBECTL) exec -it postgres-0 --namespace $(INFRA_NS) -- psql -U postgres
+
+seaweedfs-up: doctor ## Install SeaweedFS (S3 storage) in the infra namespace
+	@$(KUBECTL) apply -f deploy/kubernetes/infra-namespace.yaml
+	@./scripts/create-local-secrets.sh
+	@$(KUBECTL) apply -f deploy/kubernetes/seaweedfs/
+	@$(KUBECTL) rollout status statefulset/seaweedfs --namespace $(INFRA_NS) --timeout 5m
+
+seaweedfs-down: doctor ## Remove SeaweedFS, including stored documents and credentials
+	@$(KUBECTL) delete -f deploy/kubernetes/seaweedfs/ --ignore-not-found
+	@$(KUBECTL) delete pvc/data-seaweedfs-0 secret/seaweedfs-s3 --namespace $(INFRA_NS) --ignore-not-found
+
+s3-credentials: ## Print the S3 access key and secret key
+	@echo "access key: $$($(KUBECTL) get secret seaweedfs-s3 --namespace $(INFRA_NS) -o jsonpath='{.data.access-key}' | base64 -d)"
+	@echo "secret key: $$($(KUBECTL) get secret seaweedfs-s3 --namespace $(INFRA_NS) -o jsonpath='{.data.secret-key}' | base64 -d)"
+
+s3-forward: doctor ## Forward the S3 API to localhost:18333 (Ctrl+C to stop)
+	@echo "S3 endpoint http://localhost:$(S3_FORWARD_PORT), path-style, region us-east-1 (keys from make s3-credentials)"
+	@$(KUBECTL) port-forward service/seaweedfs $(S3_FORWARD_PORT):8333 --namespace $(INFRA_NS)
+
+s3-check: doctor ## Upload, read and delete a test object through the S3 API
+	@./scripts/s3-check.sh $(S3_FORWARD_PORT)

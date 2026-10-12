@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: seaweedfs
+  namespace: invoiceflow-infra
+  labels:
+    app.kubernetes.io/name: seaweedfs
+spec:
+  selector:
+    app.kubernetes.io/name: seaweedfs
+  ports:
+    - name: s3
+      port: 8333
+      targetPort: s3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seaweedfs-headless
+  namespace: invoiceflow-infra
+  labels:
+    app.kubernetes.io/name: seaweedfs
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: seaweedfs
+  ports:
+    - name: s3
+      port: 8333
+      targetPort: s3
