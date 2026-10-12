@@ -1,0 +1,44 @@
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  hosts:
+    - grafana.invoiceflow.localhost
+  path: /
+
+grafana.ini:
+  server:
+    root_url: http://grafana.invoiceflow.localhost:8080
+  analytics:
+    reporting_enabled: false
+    check_for_updates: false
+    check_for_plugin_updates: false
+  news:
+    news_feed_enabled: false
+  # Grafana downloads several app plugins on startup by default; the core Explore view is enough
+  plugins:
+    preinstall_disabled: true
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Loki
+        type: loki
+        uid: loki
+        access: proxy
+        url: http://loki.invoiceflow-observability.svc.cluster.local:3100
+        isDefault: true
+
+# Dashboards and data sources are provisioned, so nothing needs to survive a restart
+persistence:
+  enabled: false
+
+testFramework:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 192Mi
+  limits:
+    memory: 384Mi

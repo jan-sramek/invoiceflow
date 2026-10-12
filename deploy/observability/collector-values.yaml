@@ -1,0 +1,56 @@
+mode: daemonset
+
+image:
+  repository: otel/opentelemetry-collector-k8s
+
+presets:
+  logsCollection:
+    enabled: true
+    includeCollectorLogs: false
+    # Remembers file offsets on the node, so a collector restart doesn't resend old logs
+    storeCheckpoints: true
+  kubernetesAttributes:
+    enabled: true
+
+config:
+  receivers:
+    jaeger: null
+    zipkin: null
+    prometheus: null
+  exporters:
+    otlphttp/loki:
+      endpoint: http://loki.invoiceflow-observability.svc.cluster.local:3100/otlp
+  service:
+    pipelines:
+      logs:
+        exporters:
+          - otlphttp/loki
+      metrics: null
+      traces: null
+
+ports:
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false
+
+# Container log files on the nodes belong to root and are not world-readable
+securityContext:
+  runAsUser: 0
+  runAsGroup: 0
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 200Mi
