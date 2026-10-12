@@ -7,8 +7,12 @@ namespace InvoiceFlow.Domain.Errors;
 /// </summary>
 public abstract class InvoiceFlowException : Exception
 {
-    protected InvoiceFlowException(string code, ErrorKind kind, IReadOnlyDictionary<string, object?>? parameters = null)
-        : base(BuildMessage(code, parameters))
+    protected InvoiceFlowException(
+        string code,
+        ErrorKind kind,
+        IReadOnlyDictionary<string, object?>? parameters = null,
+        Exception? innerException = null)
+        : base(BuildMessage(code, parameters), innerException)
     {
         Code = code;
         Kind = kind;

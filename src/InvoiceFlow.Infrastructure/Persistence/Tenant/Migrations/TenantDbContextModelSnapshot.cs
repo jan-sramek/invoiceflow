@@ -246,6 +246,18 @@ namespace InvoiceFlow.Infrastructure.Persistence.Tenant.Migrations
 
                     b.ToTable("invoices", (string)null);
                 });
+
+            modelBuilder.Entity("InvoiceFlow.Infrastructure.Persistence.Tenant.TenantSettings", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("TenantId")
+                        .HasName("pk_tenant_settings");
+
+                    b.ToTable("tenant_settings", (string)null);
+                });
 #pragma warning restore 612, 618
         }
     }
