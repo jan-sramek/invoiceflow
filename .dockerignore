@@ -1,0 +1,10 @@
+# Allow-list: only sources and build settings reach the build context
+*
+!src/
+!global.json
+!Directory.Build.props
+!Directory.Packages.props
+!BannedSymbols.txt
+!.editorconfig
+**/bin/
+**/obj/
