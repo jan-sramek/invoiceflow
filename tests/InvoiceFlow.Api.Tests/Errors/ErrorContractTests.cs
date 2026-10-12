@@ -79,6 +79,25 @@ public class ErrorContractTests
     }
 
     [Fact]
+    public async Task RequestValidationFailed_ReturnsFieldErrorsWithParams()
+    {
+        await using ErrorTestApi api = new();
+        using HttpClient client = api.CreateClient();
+
+        HttpResponseMessage response = await client.GetAsync("/test/errors/invalid-request", TestContext.Current.CancellationToken);
+        JsonElement problem = await ProblemAsync(response);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        problem.GetProperty("code").GetString().ShouldBe("validation.failed");
+        FieldErrors(problem).ShouldBe(
+        [
+            ("/lines/0/amount", "validation.amount_precision"),
+            ("/supplierName", "validation.required"),
+        ]);
+        problem.GetProperty("errors")[0].GetProperty("params").GetProperty("maxDecimals").GetInt32().ShouldBe(2);
+    }
+
+    [Fact]
     public async Task Unavailable_TellsClientWhenToRetry()
     {
         await using ErrorTestApi api = new();

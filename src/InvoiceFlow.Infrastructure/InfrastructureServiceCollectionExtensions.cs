@@ -32,6 +32,7 @@ public static class InfrastructureServiceCollectionExtensions
             TenantDbContext.Configure(options).AddInterceptors(provider.GetRequiredService<TenantConnectionInterceptor>()));
 
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
+        services.AddScoped<IInvoiceReadService, InvoiceReadService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         return services;

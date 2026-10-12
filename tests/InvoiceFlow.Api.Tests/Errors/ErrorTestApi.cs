@@ -53,6 +53,13 @@ public sealed class ErrorTestController : ControllerBase
         new FieldIssue(InvoiceField.DueDate, DomainErrors.Validation.Required),
     ]);
 
+    [HttpGet("invalid-request")]
+    public IActionResult InvalidRequest() => throw new RequestValidationException(
+    [
+        new RequestFieldError("Lines[0].Amount", DomainErrors.Validation.AmountPrecision, new Dictionary<string, object?> { ["maxDecimals"] = 2 }),
+        new RequestFieldError("SupplierName", DomainErrors.Validation.Required, new Dictionary<string, object?>()),
+    ]);
+
     [HttpGet("unexpected")]
     public IActionResult Unexpected() => throw new InvalidOperationException(UnexpectedMessage);
 
