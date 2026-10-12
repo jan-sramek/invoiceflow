@@ -1,2 +1,8 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/InvoiceFlow.Domain/InvoiceFlow.Domain.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/InvoiceFlow.Domain.Tests/InvoiceFlow.Domain.Tests.csproj" />
+  </Folder>
 </Solution>
