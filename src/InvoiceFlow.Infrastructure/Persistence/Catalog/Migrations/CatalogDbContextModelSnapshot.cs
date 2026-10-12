@@ -84,6 +84,15 @@ namespace InvoiceFlow.Infrastructure.Persistence.Catalog.Migrations
                         .HasColumnType("character varying(253)")
                         .HasColumnName("host");
 
+                    b.Property<DateTimeOffset?>("LastMigratedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_migrated_at");
+
+                    b.Property<string>("LastMigrationError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("last_migration_error");
+
                     b.Property<string>("Location")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -93,6 +102,17 @@ namespace InvoiceFlow.Infrastructure.Persistence.Catalog.Migrations
                     b.Property<int>("Port")
                         .HasColumnType("integer")
                         .HasColumnName("port");
+
+                    b.Property<string>("RuntimeRole")
+                        .IsRequired()
+                        .HasMaxLength(63)
+                        .HasColumnType("character varying(63)")
+                        .HasColumnName("runtime_role");
+
+                    b.Property<string>("SchemaVersion")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("schema_version");
 
                     b.Property<string>("SslMode")
                         .IsRequired()

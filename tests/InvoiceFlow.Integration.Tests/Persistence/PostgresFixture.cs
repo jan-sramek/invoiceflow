@@ -92,33 +92,43 @@ public sealed class PostgresFixture : IAsyncLifetime
         }
 
         await ExecuteAsync(database, $"INSERT INTO tenant_settings (tenant_id) VALUES ('{tenantId.Value}')");
-
-        var server = new NpgsqlConnectionStringBuilder(_container.GetConnectionString());
-        await File.WriteAllTextAsync(
-            Path.Combine(_credentials.FullName, database),
-            JsonSerializer.Serialize(new { username = server.Username, password = server.Password }));
-
-        await UpdateCatalogAsync(catalog => catalog.Tenants.AddAsync(new CatalogTenant
-        {
-            Id = tenantId,
-            Name = $"Tenant {database}",
-            Slug = database.Replace('_', '-'),
-            Status = TenantStatus.Active,
-            CreatedAt = DateTimeOffset.UnixEpoch,
-            Database = new TenantDatabase
-            {
-                TenantId = tenantId,
-                Location = DatabaseLocation.Managed,
-                Host = Host,
-                Port = Port,
-                DatabaseName = database,
-                SslMode = SslMode.Disable,
-                CredentialsKey = database,
-            },
-        }).AsTask());
+        await WriteCredentialsAsync(_credentials.FullName, database);
+        await UpdateCatalogAsync(catalog =>
+            catalog.Tenants.AddAsync(CatalogEntry(tenantId, database, runtimeRole: Server.Username!)).AsTask());
 
         return new TestTenant(tenantId, database);
     }
+
+    /// <summary>
+    /// An active tenant whose credentials key is the database name.
+    /// </summary>
+    internal CatalogTenant CatalogEntry(TenantId tenantId, string database, string runtimeRole) => new()
+    {
+        Id = tenantId,
+        Name = $"Tenant {tenantId}",
+        Slug = $"tenant-{tenantId.Value:N}",
+        Status = TenantStatus.Active,
+        CreatedAt = DateTimeOffset.UnixEpoch,
+        Database = new TenantDatabase
+        {
+            TenantId = tenantId,
+            Location = DatabaseLocation.Managed,
+            Host = Host,
+            Port = Port,
+            DatabaseName = database,
+            SslMode = SslMode.Disable,
+            CredentialsKey = database,
+            RuntimeRole = runtimeRole,
+        },
+    };
+
+    /// <summary>
+    /// Writes the server's superuser login as the credentials file <paramref name="key"/>.
+    /// </summary>
+    internal Task WriteCredentialsAsync(string directory, string key) =>
+        File.WriteAllTextAsync(
+            Path.Combine(directory, key),
+            JsonSerializer.Serialize(new { username = Server.Username, password = Server.Password }));
 
     internal async Task UpdateCatalogAsync(Func<CatalogDbContext, Task> change)
     {
@@ -152,6 +162,8 @@ public sealed class PostgresFixture : IAsyncLifetime
             Pooling = pooling,
         }.ConnectionString;
 
+    private NpgsqlConnectionStringBuilder Server => new(_container.GetConnectionString());
+
     public async ValueTask DisposeAsync()
     {
         if (_services is not null)
@@ -172,7 +184,7 @@ public sealed class PostgresFixture : IAsyncLifetime
         return builder.Options;
     }
 
-    private async Task ExecuteAsync(string database, params string[] statements)
+    internal async Task ExecuteAsync(string database, params string[] statements)
     {
         await using var connection = new NpgsqlConnection(ConnectionString(database, pooling: false));
         await connection.OpenAsync();

@@ -17,6 +17,10 @@ New areas get the next free thousand.
 | Id | Name | Level | Source | Fields |
 | --- | --- | --- | --- | --- |
 | 1 | ServiceStarted | Information | ServiceDefaults | `ServiceName`, `ServiceVersion`, `Environment` |
+| 100 | CatalogMigrated | Information | Infrastructure | `SchemaVersion` |
+| 101 | TenantMigrated | Information | Infrastructure | `TenantId`, `SchemaVersion` |
+| 102 | TenantMigrationFailed | Error | Infrastructure | `TenantId`, exception |
+| 103 | SchemaMigrationFinished | Information, Warning if any tenant failed | Infrastructure | `Succeeded`, `Failed` |
 
 ## Framework events we rely on
 

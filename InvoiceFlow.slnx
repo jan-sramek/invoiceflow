@@ -4,6 +4,7 @@
     <Project Path="src/InvoiceFlow.Application/InvoiceFlow.Application.csproj" />
     <Project Path="src/InvoiceFlow.Domain/InvoiceFlow.Domain.csproj" />
     <Project Path="src/InvoiceFlow.Infrastructure/InvoiceFlow.Infrastructure.csproj" />
+    <Project Path="src/InvoiceFlow.Migrator/InvoiceFlow.Migrator.csproj" />
     <Project Path="src/InvoiceFlow.ServiceDefaults/InvoiceFlow.ServiceDefaults.csproj" />
     <Project Path="src/InvoiceFlow.Worker/InvoiceFlow.Worker.csproj" />
   </Folder>
