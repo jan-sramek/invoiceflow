@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging.Testing;
 
-namespace InvoiceFlow.Api.Tests.Logging;
+namespace InvoiceFlow.Testing.Logging;
 
 public static class LogAssertions
 {
@@ -25,9 +25,12 @@ public static class LogAssertions
     }
 
     // Some records, such as the request summary, are written after the response reaches the client
-    public static async Task<FakeLogRecord> WaitForAsync(this FakeLogCollector logs, Func<FakeLogRecord, bool> predicate)
+    public static async Task<FakeLogRecord> WaitForAsync(
+        this FakeLogCollector logs,
+        Func<FakeLogRecord, bool> predicate,
+        CancellationToken cancellationToken)
     {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(WaitTimeout);
 
         while (true)
@@ -42,7 +45,7 @@ public static class LogAssertions
             {
                 await Task.Delay(20, timeout.Token);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
                 throw new TimeoutException($"No matching log record within {WaitTimeout.TotalSeconds}s.");
             }
