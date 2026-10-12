@@ -4,6 +4,9 @@
 set -euo pipefail
 
 kubectl=(kubectl --context k3d-invoiceflow)
+root="$(cd "$(dirname "$0")/.." && pwd)"
+
+"${kubectl[@]}" apply -f "$root/deploy/kubernetes/infra-namespace.yaml" -f "$root/deploy/kubernetes/namespace.yaml" >/dev/null
 
 # Usage: ensure_secret <namespace> <name> <key>... (every key gets its own random value)
 ensure_secret() {
@@ -23,3 +26,7 @@ ensure_secret() {
 
 ensure_secret invoiceflow-infra postgres-superuser password
 ensure_secret invoiceflow-infra seaweedfs-s3 access-key secret-key
+ensure_secret invoiceflow-infra rabbitmq-admin password
+# Application credentials live next to the applications that use them
+ensure_secret invoiceflow rabbitmq-api password
+ensure_secret invoiceflow rabbitmq-worker password

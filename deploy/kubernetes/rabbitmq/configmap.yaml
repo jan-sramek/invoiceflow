@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-config
+  namespace: invoiceflow-infra
+  labels:
+    app.kubernetes.io/name: rabbitmq
+data:
+  # Replaces the image defaults, which allow the guest user from any host
+  10-invoiceflow.conf: |
+    default_vhost = invoiceflow
+    log.console = true
+    log.console.formatter = json
+    log.file = false
+    # Below the container limit, so RabbitMQ blocks publishers before the kernel kills it
+    vm_memory_high_watermark.absolute = 300MiB
