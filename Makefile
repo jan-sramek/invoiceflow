@@ -17,6 +17,7 @@ COLLECTOR_CHART_VERSION := 0.175.1
 OBSERVABILITY_NS := invoiceflow-observability
 COLLECTOR_NS := invoiceflow-collector
 INFRA_NS := invoiceflow-infra
+APP_NS := invoiceflow
 DB_FORWARD_PORT := 15432
 S3_FORWARD_PORT := 18333
 DASHBOARD_IMAGE := $(shell grep -o 'mcr.microsoft.com/dotnet/aspire-dashboard[^ ]*' deploy/observability/aspire-dashboard.yaml)
@@ -32,7 +33,8 @@ endif
 .PHONY: help up down doctor cluster-up cluster-down cluster-status ollama-up ollama-down ollama-check \
 	observability-up observability-down grafana-password dashboard-url telemetry-check dashboard-up dashboard-down \
 	postgres-up postgres-down postgres-password db-forward psql \
-	seaweedfs-up seaweedfs-down s3-credentials s3-forward s3-check images
+	seaweedfs-up seaweedfs-down s3-credentials s3-forward s3-check images \
+	app-up app-down app-check
 
 help:
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -182,3 +184,23 @@ images: doctor ## Build the API and worker images and push them to the cluster r
 			--build-arg SOURCE_REVISION=$$(git rev-parse HEAD) --tag $$image . >/dev/null || exit 1; \
 		echo "Pushed $$image"; \
 	done
+
+app-up: images ## Build the images and deploy the API and worker
+	@$(KUBECTL) apply -f deploy/kubernetes/namespace.yaml
+	@for manifest in deploy/kubernetes/app/*.yaml; do \
+		sed 's/$${IMAGE_TAG}/$(IMAGE_TAG)/g' $$manifest; echo ---; \
+	done | $(KUBECTL) apply -f -
+	@$(KUBECTL) rollout status deployment/api --namespace $(APP_NS) --timeout 5m
+	@$(KUBECTL) rollout status deployment/worker --namespace $(APP_NS) --timeout 5m
+	@echo "API: http://invoiceflow.localhost:8080/api"
+
+app-down: doctor ## Remove the API and worker
+	@$(KUBECTL) delete -f deploy/kubernetes/app/ --ignore-not-found
+
+app-check: ## Send a request through the ingress and print where to find its log line and trace
+	@trace=$$(curl -s -o /dev/null -D - http://invoiceflow.localhost:8080/api/v1/app-check \
+		| tr -d '\r' | awk -F': ' 'tolower($$1) == "x-trace-id" { print $$2 }'); \
+	if [ -z "$$trace" ]; then echo "No X-Trace-Id in the response; is the API deployed (make app-up)?"; exit 1; fi; \
+	echo "Trace id: $$trace"; \
+	echo "Log line: Grafana > Explore > Loki: {k8s_namespace_name=\"$(APP_NS)\"} |= \"$$trace\""; \
+	echo "Trace:    http://dashboard.invoiceflow.localhost:8080/traces/detail/$$trace"

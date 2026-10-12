@@ -28,6 +28,13 @@ datasources:
         access: proxy
         url: http://loki.invoiceflow-observability.svc.cluster.local:3100
         isDefault: true
+        jsonData:
+          # Turns the trace id in .NET JSON logs into a link to the trace; $$ escapes Grafana's env interpolation
+          derivedFields:
+            - name: TraceId
+              matcherRegex: '"TraceId":"([0-9a-f]{32})"'
+              url: http://dashboard.invoiceflow.localhost:8080/traces/detail/$${__value.raw}
+              urlDisplayLabel: Open trace in Aspire Dashboard
 
 # Dashboards and data sources are provisioned, so nothing needs to survive a restart
 persistence:
