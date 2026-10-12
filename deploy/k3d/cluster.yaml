@@ -5,6 +5,8 @@ metadata:
 servers: 1
 agents: 2
 image: rancher/k3s:v1.35.5-k3s1
+# A fixed subnet makes k3d pin node IPs; k3s won't start if the server IP changes after a Docker restart
+subnet: 172.28.0.0/16
 kubeAPI:
   hostIP: 127.0.0.1
   hostPort: "6550"

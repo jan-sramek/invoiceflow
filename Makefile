@@ -9,10 +9,24 @@ export INVOICEFLOW_BACKUP_DIR ?= $(HOME)/.local/share/invoiceflow/backups
 KUBECTL := kubectl --context $(CONTEXT)
 
 .DEFAULT_GOAL := help
-.PHONY: help doctor cluster-up cluster-down cluster-status ollama-up ollama-down ollama-check
+.PHONY: help up down doctor cluster-up cluster-down cluster-status ollama-up ollama-down ollama-check
 
 help:
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
+
+up: ## Start the VM, the cluster and Ollama
+	@if colima status --profile $(CLUSTER) >/dev/null 2>&1; then \
+		echo "Colima is already running"; \
+	else \
+		previous=$$(env -u DOCKER_HOST docker context show); \
+		colima start --profile $(CLUSTER); \
+		env -u DOCKER_HOST docker context use "$$previous" >/dev/null; \
+		echo "Docker context restored to $$previous"; \
+	fi
+	@$(MAKE) --no-print-directory cluster-up ollama-up
+
+down: ollama-down ## Stop Ollama and the VM (the cluster stops with it)
+	@colima stop --profile $(CLUSTER)
 
 doctor: ## Check that Docker and kubectl target the local environment only
 	@./scripts/doctor.sh
@@ -25,6 +39,8 @@ cluster-up: doctor ## Create the k3d cluster (no-op if it exists)
 		k3d cluster create --config deploy/k3d/cluster.yaml; \
 	fi
 	@./scripts/doctor.sh
+	@# The API server needs a while after the VM starts; kubectl wait fails at once if it can't connect
+	@for i in $$(seq 60); do $(KUBECTL) get --raw /readyz >/dev/null 2>&1 && break; sleep 2; done
 	@$(KUBECTL) wait --for=condition=Ready nodes --all --timeout=120s
 	@$(KUBECTL) get nodes
 
