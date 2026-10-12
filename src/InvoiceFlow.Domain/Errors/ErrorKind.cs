@@ -6,4 +6,5 @@ public enum ErrorKind
     BusinessRule,
     Conflict,
     Forbidden,
+    PreconditionFailed,
 }

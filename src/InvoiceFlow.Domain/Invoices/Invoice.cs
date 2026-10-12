@@ -45,6 +45,12 @@ public sealed class Invoice : AggregateRoot
             [(InvoiceStatus.Approved, InvoiceAction.MarkPaid)] = InvoiceStatus.Paid,
         }.ToFrozenDictionary();
 
+    // Used by EF Core when loading.
+    private Invoice()
+    {
+        UploadedBy = null!;
+    }
+
     private Invoice(InvoiceId id, Actor uploadedBy, DateTimeOffset uploadedAt)
     {
         Id = id;

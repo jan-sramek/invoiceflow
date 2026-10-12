@@ -132,3 +132,7 @@ dotnet_diagnostic.CA1062.severity = none
 dotnet_diagnostic.CA1707.severity = none
 # xUnit test methods must be instance methods
 dotnet_diagnostic.CA1822.severity = none
+
+[src/**/Migrations/*.cs]
+# Written by dotnet ef; regenerated, never edited by hand
+generated_code = true
