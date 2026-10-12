@@ -18,6 +18,7 @@ public class RequestLoggingTests
         summary.Value("Method").ShouldBe("GET");
         summary.Value("Path").ShouldBe("/api/v1/missing");
         summary.Value("StatusCode").ShouldBe("404");
+        summary.Value("ErrorCode").ShouldBe("request.not_found");
         summary.Value("Duration").ShouldNotBeNull();
         api.Logs.GetSnapshot().Count(record => record.Category?.StartsWith("Microsoft.AspNetCore", StringComparison.Ordinal) == true).ShouldBe(1);
     }

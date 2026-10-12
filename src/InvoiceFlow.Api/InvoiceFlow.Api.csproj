@@ -1,8 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Scalar.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\InvoiceFlow.Infrastructure\InvoiceFlow.Infrastructure.csproj" />
     <ProjectReference Include="..\InvoiceFlow.ServiceDefaults\InvoiceFlow.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="InvoiceFlow.Api.Tests" />
   </ItemGroup>
 
 </Project>

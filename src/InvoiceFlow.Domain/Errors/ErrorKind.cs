@@ -4,8 +4,10 @@ public enum ErrorKind
 {
     Validation,
     BusinessRule,
+    NotFound,
     Conflict,
     Forbidden,
     PreconditionFailed,
+    PreconditionRequired,
     Unavailable,
 }
