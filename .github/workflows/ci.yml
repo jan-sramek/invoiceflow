@@ -48,3 +48,9 @@ jobs:
       - run: dotnet restore InvoiceFlow.slnx
       - run: dotnet build InvoiceFlow.slnx --no-restore -c Release
       - run: dotnet test InvoiceFlow.slnx --no-build -c Release
+
+      - name: Test with Czech culture
+        run: dotnet test InvoiceFlow.slnx --no-build -c Release
+        env:
+          LANG: cs_CZ.UTF-8
+          LC_ALL: cs_CZ.UTF-8
