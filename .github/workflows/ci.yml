@@ -56,13 +56,22 @@ jobs:
           LC_ALL: cs_CZ.UTF-8
 
   images:
-    name: Container image (${{ matrix.app }})
+    name: Container image (${{ matrix.image }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        app: [Api, Worker]
+        include:
+          - image: Api
+            dockerfile: src/InvoiceFlow.Api/Dockerfile
+            context: .
+          - image: Worker
+            dockerfile: src/InvoiceFlow.Worker/Dockerfile
+            context: .
+          - image: Keycloak
+            dockerfile: deploy/images/keycloak/Dockerfile
+            context: deploy/images/keycloak
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -74,6 +83,6 @@ jobs:
         run: >
           docker buildx build
           --platform linux/amd64,linux/arm64
-          --file src/InvoiceFlow.${{ matrix.app }}/Dockerfile
+          --file ${{ matrix.dockerfile }}
           --build-arg SOURCE_REVISION=${{ github.sha }}
-          .
+          ${{ matrix.context }}
