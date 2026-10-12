@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\InvoiceFlow.Worker\InvoiceFlow.Worker.csproj" />
+    <ProjectReference Include="..\InvoiceFlow.Testing\InvoiceFlow.Testing.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="InvoiceFlow.Testing.Logging" />
+  </ItemGroup>
+
+</Project>

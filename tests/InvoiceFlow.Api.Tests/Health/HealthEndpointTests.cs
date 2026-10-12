@@ -1,5 +1,4 @@
 using System.Net;
-using InvoiceFlow.Api.Tests.Logging;
 
 namespace InvoiceFlow.Api.Tests.Health;
 
@@ -28,7 +27,9 @@ public class HealthEndpointTests
         await client.GetAsync("/health/live", TestContext.Current.CancellationToken);
         await client.GetAsync("/health/ready", TestContext.Current.CancellationToken);
         await client.GetAsync("/after-health", TestContext.Current.CancellationToken);
-        await api.Logs.WaitForAsync(record => record.Value("Path") == "/after-health");
+        await api.Logs.WaitForAsync(
+            record => record.Value("Path") == "/after-health",
+            TestContext.Current.CancellationToken);
 
         api.Logs.GetSnapshot()
             .Where(record => record.Category == LogAssertions.RequestSummaryCategory)

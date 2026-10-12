@@ -3,9 +3,12 @@
     <Project Path="src/InvoiceFlow.Api/InvoiceFlow.Api.csproj" />
     <Project Path="src/InvoiceFlow.Domain/InvoiceFlow.Domain.csproj" />
     <Project Path="src/InvoiceFlow.ServiceDefaults/InvoiceFlow.ServiceDefaults.csproj" />
+    <Project Path="src/InvoiceFlow.Worker/InvoiceFlow.Worker.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/InvoiceFlow.Api.Tests/InvoiceFlow.Api.Tests.csproj" />
     <Project Path="tests/InvoiceFlow.Domain.Tests/InvoiceFlow.Domain.Tests.csproj" />
+    <Project Path="tests/InvoiceFlow.Testing/InvoiceFlow.Testing.csproj" />
+    <Project Path="tests/InvoiceFlow.Worker.Tests/InvoiceFlow.Worker.Tests.csproj" />
   </Folder>
 </Solution>

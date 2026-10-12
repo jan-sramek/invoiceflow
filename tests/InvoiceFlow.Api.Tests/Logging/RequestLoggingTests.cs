@@ -11,7 +11,9 @@ public class RequestLoggingTests
         using HttpClient client = api.CreateClient();
 
         await client.GetAsync("/api/v1/missing", TestContext.Current.CancellationToken);
-        FakeLogRecord summary = await api.Logs.WaitForAsync(record => record.Category == LogAssertions.RequestSummaryCategory);
+        FakeLogRecord summary = await api.Logs.WaitForAsync(
+            record => record.Category == LogAssertions.RequestSummaryCategory,
+            TestContext.Current.CancellationToken);
 
         summary.Value("Method").ShouldBe("GET");
         summary.Value("Path").ShouldBe("/api/v1/missing");
@@ -31,7 +33,9 @@ public class RequestLoggingTests
         request.Headers.Add("Authorization", $"Bearer {headerCanary}");
 
         await client.SendAsync(request, TestContext.Current.CancellationToken);
-        await api.Logs.WaitForAsync(record => record.Category == LogAssertions.RequestSummaryCategory);
+        await api.Logs.WaitForAsync(
+            record => record.Category == LogAssertions.RequestSummaryCategory,
+            TestContext.Current.CancellationToken);
 
         api.Logs.ShouldNotContainAny(queryCanary, headerCanary);
     }
@@ -42,7 +46,9 @@ public class RequestLoggingTests
         await using ApiFactory api = new();
         api.StartServer();
 
-        FakeLogRecord started = await api.Logs.WaitForAsync(record => record.Id.Name == "ServiceStarted");
+        FakeLogRecord started = await api.Logs.WaitForAsync(
+            record => record.Id.Name == "ServiceStarted",
+            TestContext.Current.CancellationToken);
 
         started.Id.Id.ShouldBe(1);
         started.Value("ServiceName").ShouldBe("InvoiceFlow.Api");

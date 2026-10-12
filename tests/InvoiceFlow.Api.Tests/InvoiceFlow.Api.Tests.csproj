@@ -1,12 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />
+    <ProjectReference Include="..\..\src\InvoiceFlow.Api\InvoiceFlow.Api.csproj" />
+    <ProjectReference Include="..\InvoiceFlow.Testing\InvoiceFlow.Testing.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\InvoiceFlow.Api\InvoiceFlow.Api.csproj" />
+    <Using Include="InvoiceFlow.Testing.Logging" />
   </ItemGroup>
 
 </Project>

@@ -3,17 +3,22 @@
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
+    <!-- Shared helper libraries such as InvoiceFlow.Testing are not test applications -->
+    <IsTestProject>$(MSBuildProjectName.EndsWith('.Tests'))</IsTestProject>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <OutputType>Exe</OutputType>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Shouldly" />
-    <PackageReference Include="xunit.v3.mtp-v2" />
+    <Using Include="Shouldly" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Using Include="Shouldly" />
+  <ItemGroup Condition="'$(IsTestProject)' == 'true'">
+    <PackageReference Include="xunit.v3.mtp-v2" />
     <Using Include="Xunit" />
   </ItemGroup>
 
