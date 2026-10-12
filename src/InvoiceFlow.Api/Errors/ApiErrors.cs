@@ -26,6 +26,15 @@ public static class ApiErrors
         public const string UnsupportedMediaType = "request.unsupported_media_type";
     }
 
+    public static class Concurrency
+    {
+        /// <summary>
+        /// A write came without the <c>ETag</c> the client read; this is a client bug, not a user error.
+        /// </summary>
+        [Description("Version required")]
+        public const string IfMatchRequired = "concurrency.if_match_required";
+    }
+
     public static class Validation
     {
         [Description("Invalid format")]

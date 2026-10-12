@@ -3,6 +3,7 @@ using FluentValidation;
 using InvoiceFlow.Application.Abstractions.Messaging;
 using InvoiceFlow.Application.Behaviors;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace InvoiceFlow.Application;
 
@@ -26,6 +27,7 @@ public static class ApplicationServiceCollectionExtensions
             .AsImplementedInterfaces()
             .WithScopedLifetime());
         services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
+        services.TryAddSingleton(TimeProvider.System);
 
         // Each Decorate wraps the previous one, so the last registered runs first.
         services.TryDecorate(typeof(ICommandHandler<,>), typeof(UnitOfWorkCommandDecorator<,>));

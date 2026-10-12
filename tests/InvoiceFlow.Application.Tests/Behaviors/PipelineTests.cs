@@ -1,10 +1,12 @@
 using FluentValidation;
+using InvoiceFlow.Application.Abstractions.Context;
 using InvoiceFlow.Application.Abstractions.Messaging;
 using InvoiceFlow.Application.Abstractions.Persistence;
 using InvoiceFlow.Application.Behaviors;
 using InvoiceFlow.Application.Common;
 using InvoiceFlow.Application.Errors;
 using InvoiceFlow.Application.Invoices.GetInvoice;
+using InvoiceFlow.Domain.Common;
 using InvoiceFlow.Domain.Invoices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -97,6 +99,8 @@ public class PipelineTests
             .AddScoped<Calls>()
             .AddScoped<IUnitOfWork>(provider => new RecordingUnitOfWork(provider.GetRequiredService<Calls>(), failCommit))
             .AddScoped<IInvoiceReadService, NoInvoices>()
+            .AddScoped<IInvoiceRepository, NoInvoices>()
+            .AddScoped<ICurrentUser, NoUser>()
             .AddScoped<ICommandHandler<TestCommand, int>, TestCommandHandler>()
             .AddScoped<IQueryHandler<TestQuery, int>, TestQueryHandler>()
             .AddScoped<IValidator<TestCommand>, TestCommandValidator>()
@@ -175,9 +179,22 @@ public class PipelineTests
         }
     }
 
-    private sealed class NoInvoices : IInvoiceReadService
+    private sealed class NoInvoices : IInvoiceReadService, IInvoiceRepository
     {
         public Task<Versioned<InvoiceDetailDto>?> GetDetailAsync(InvoiceId id, CancellationToken cancellationToken) =>
             Task.FromResult<Versioned<InvoiceDetailDto>?>(null);
+
+        public Task<Invoice?> GetAsync(InvoiceId id, CancellationToken cancellationToken) =>
+            Task.FromResult<Invoice?>(null);
+
+        public Task<Invoice?> GetAsync(InvoiceId id, string expectedVersion, CancellationToken cancellationToken) =>
+            Task.FromResult<Invoice?>(null);
+
+        public void Add(Invoice invoice) => throw new NotSupportedException();
+    }
+
+    private sealed class NoUser : ICurrentUser
+    {
+        public Actor Actor => throw new UserRequiredException();
     }
 }

@@ -51,6 +51,7 @@ internal sealed partial class InvoiceFlowExceptionHandler(
     internal static int StatusOf(ErrorKind kind) => kind switch
     {
         ErrorKind.Validation => StatusCodes.Status400BadRequest,
+        ErrorKind.Unauthenticated => StatusCodes.Status401Unauthorized,
         ErrorKind.BusinessRule => StatusCodes.Status422UnprocessableEntity,
         ErrorKind.NotFound => StatusCodes.Status404NotFound,
         ErrorKind.Conflict => StatusCodes.Status409Conflict,

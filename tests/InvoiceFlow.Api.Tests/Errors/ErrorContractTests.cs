@@ -20,7 +20,7 @@ public class ErrorContractTests
     [InlineData("/api/v1/missing", HttpStatusCode.NotFound, "request.not_found")]
     public async Task Error_AnySource_ReturnsProblemDetailsWithCode(string path, HttpStatusCode status, string code)
     {
-        await using ErrorTestApi api = new();
+        await using TestEndpointsApi api = new();
         using HttpClient client = api.CreateClient();
 
         HttpResponseMessage response = await client.GetAsync(path, TestContext.Current.CancellationToken);
@@ -38,7 +38,7 @@ public class ErrorContractTests
     [Fact]
     public async Task ExpectedError_WithParams_ReturnsThem()
     {
-        await using ErrorTestApi api = new();
+        await using TestEndpointsApi api = new();
         using HttpClient client = api.CreateClient();
 
         JsonElement problem = await ProblemAsync(
@@ -52,7 +52,7 @@ public class ErrorContractTests
     [Fact]
     public async Task ExpectedError_WithoutParams_ReturnsEmptyParams()
     {
-        await using ErrorTestApi api = new();
+        await using TestEndpointsApi api = new();
         using HttpClient client = api.CreateClient();
 
         JsonElement problem = await ProblemAsync(
@@ -64,7 +64,7 @@ public class ErrorContractTests
     [Fact]
     public async Task NotReadyForSubmission_ReturnsFieldErrors()
     {
-        await using ErrorTestApi api = new();
+        await using TestEndpointsApi api = new();
         using HttpClient client = api.CreateClient();
 
         JsonElement problem = await ProblemAsync(
@@ -81,7 +81,7 @@ public class ErrorContractTests
     [Fact]
     public async Task RequestValidationFailed_ReturnsFieldErrorsWithParams()
     {
-        await using ErrorTestApi api = new();
+        await using TestEndpointsApi api = new();
         using HttpClient client = api.CreateClient();
 
         HttpResponseMessage response = await client.GetAsync("/test/errors/invalid-request", TestContext.Current.CancellationToken);
@@ -100,7 +100,7 @@ public class ErrorContractTests
     [Fact]
     public async Task Unavailable_TellsClientWhenToRetry()
     {
-        await using ErrorTestApi api = new();
+        await using TestEndpointsApi api = new();
         using HttpClient client = api.CreateClient();
 
         HttpResponseMessage response = await client.GetAsync("/test/errors/unavailable", TestContext.Current.CancellationToken);
@@ -115,7 +115,7 @@ public class ErrorContractTests
     [Fact]
     public async Task UnexpectedError_HidesDetailsAndLogsOnce()
     {
-        await using ErrorTestApi api = new();
+        await using TestEndpointsApi api = new();
         using HttpClient client = api.CreateClient();
 
         HttpResponseMessage response = await client.GetAsync("/test/errors/unexpected", TestContext.Current.CancellationToken);
@@ -135,7 +135,7 @@ public class ErrorContractTests
     [Fact]
     public async Task WrongMethod_ReturnsMethodNotAllowed()
     {
-        await using ErrorTestApi api = new();
+        await using TestEndpointsApi api = new();
         using HttpClient client = api.CreateClient();
 
         HttpResponseMessage response = await client.GetAsync("/test/errors/body", TestContext.Current.CancellationToken);
@@ -148,7 +148,7 @@ public class ErrorContractTests
     [Fact]
     public async Task UnsupportedContentType_ReturnsUnsupportedMediaType()
     {
-        await using ErrorTestApi api = new();
+        await using TestEndpointsApi api = new();
         using HttpClient client = api.CreateClient();
         using StringContent content = new("name", Encoding.UTF8, "text/plain");
 
@@ -167,7 +167,7 @@ public class ErrorContractTests
     [InlineData("[]")]
     public async Task Body_NotReadable_ReturnsMalformed(string json)
     {
-        await using ErrorTestApi api = new();
+        await using TestEndpointsApi api = new();
         using HttpClient client = api.CreateClient();
 
         HttpResponseMessage response = await PostJsonAsync(client, json);
@@ -181,7 +181,7 @@ public class ErrorContractTests
     [Fact]
     public async Task Body_WithUnknownProperty_ReturnsFieldError()
     {
-        await using ErrorTestApi api = new();
+        await using TestEndpointsApi api = new();
         using HttpClient client = api.CreateClient();
 
         JsonElement problem = await ProblemAsync(
@@ -195,7 +195,7 @@ public class ErrorContractTests
     public async Task Body_WithNestedValueOfWrongType_PointsAtIt()
     {
         string canary = LogAssertions.NewCanary("amount");
-        await using ErrorTestApi api = new();
+        await using TestEndpointsApi api = new();
         using HttpClient client = api.CreateClient();
 
         HttpResponseMessage response = await PostJsonAsync(
@@ -211,7 +211,7 @@ public class ErrorContractTests
     [Fact]
     public async Task Body_Valid_IsAccepted()
     {
-        await using ErrorTestApi api = new();
+        await using TestEndpointsApi api = new();
         using HttpClient client = api.CreateClient();
 
         HttpResponseMessage response = await PostJsonAsync(client, """{"name": "Acme", "lines": [{"amount": 1.5}]}""");

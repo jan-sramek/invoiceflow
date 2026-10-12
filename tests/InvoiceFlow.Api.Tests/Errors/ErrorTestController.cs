@@ -1,24 +1,11 @@
 using InvoiceFlow.Application.Errors;
 using InvoiceFlow.Domain.Errors;
 using InvoiceFlow.Domain.Invoices;
-using InvoiceFlow.Testing.Hosting;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace InvoiceFlow.Api.Tests.Errors;
 
-/// <summary>The API with extra endpoints that fail in every way the error contract covers.</summary>
-public sealed class ErrorTestApi : TestServiceFactory<Program>
-{
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
-    {
-        base.ConfigureWebHost(builder);
-        builder.ConfigureServices(services =>
-            services.AddControllers().AddApplicationPart(typeof(ErrorTestController).Assembly));
-    }
-}
-
+/// <summary>Endpoints that fail in every way the error contract covers.</summary>
 [ApiController]
 [Route("test/errors")]
 public sealed class ErrorTestController : ControllerBase

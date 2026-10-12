@@ -1,4 +1,3 @@
-using System.Globalization;
 using InvoiceFlow.Application.Abstractions.Persistence;
 using InvoiceFlow.Application.Common;
 using InvoiceFlow.Application.Invoices.GetInvoice;
@@ -41,6 +40,6 @@ internal sealed class InvoiceReadService(TenantDbContext dbContext) : IInvoiceRe
 
         return row is null
             ? null
-            : new Versioned<InvoiceDetailDto>(row.Detail, row.Version.ToString(CultureInfo.InvariantCulture));
+            : new Versioned<InvoiceDetailDto>(row.Detail, RowVersion.Format(row.Version));
     }
 }
