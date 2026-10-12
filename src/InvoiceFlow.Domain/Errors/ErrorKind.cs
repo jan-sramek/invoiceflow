@@ -7,4 +7,5 @@ public enum ErrorKind
     Conflict,
     Forbidden,
     PreconditionFailed,
+    Unavailable,
 }

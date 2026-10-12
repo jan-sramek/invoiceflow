@@ -9,4 +9,9 @@ public static class ApplicationErrors
     {
         public const string StaleVersion = "concurrency.stale_version";
     }
+
+    public static class Tenant
+    {
+        public const string Unavailable = "tenant.unavailable";
+    }
 }

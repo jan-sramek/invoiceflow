@@ -12,7 +12,7 @@ using Npgsql;
 
 namespace InvoiceFlow.Integration.Tests.Persistence;
 
-public sealed class InvoicePersistenceTests(PostgresFixture database)
+public sealed class InvoicePersistenceTests(PostgresFixture database) : IAsyncLifetime
 {
     private static readonly DateTimeOffset Start = new(2026, 10, 12, 9, 0, 0, TimeSpan.Zero);
     private static readonly Actor Clerk = Actor.User("clerk-1", "Clara Clerk");
@@ -31,9 +31,15 @@ public sealed class InvoicePersistenceTests(PostgresFixture database)
         PurchaseOrderReference = PurchaseOrderReference.Create("PO-77"),
     };
 
-    private readonly TenantId _tenant = new(Guid.NewGuid());
+    private TestTenant _testTenant = null!;
+
+    private TenantId Tenant => _testTenant.Id;
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
+
+    public async ValueTask InitializeAsync() => _testTenant = await database.CreateTenantAsync();
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
     public async Task Commit_PaidInvoice_LoadsWithEveryValue()
@@ -77,7 +83,7 @@ public sealed class InvoicePersistenceTests(PostgresFixture database)
         await AddAsync(invoice);
         InvoiceFields edited = Fields with { DueDate = null, TotalAmount = 1250m };
 
-        await using (AsyncServiceScope scope = database.OpenScope(_tenant))
+        await using (AsyncServiceScope scope = database.OpenScope(Tenant))
         {
             Invoice loaded = (await Repository(scope).GetAsync(invoice.Id, CancellationToken)).ShouldNotBeNull();
             loaded.UpdateFields(Clerk, Start.AddMinutes(1), edited);
@@ -114,7 +120,7 @@ public sealed class InvoicePersistenceTests(PostgresFixture database)
             AuditActions.InvoiceApproved,
             AuditActions.InvoicePaid,
         ]);
-        rows.ShouldAllBe(r => r.TenantId == _tenant.Value);
+        rows.ShouldAllBe(r => r.TenantId == Tenant.Value);
         rows[4].ActorId.ShouldBe(Approver.Id);
         rows[4].ActorName.ShouldBe(Approver.Name);
         rows[2].Changes.ShouldContain("\"supplierName\"");
@@ -154,8 +160,8 @@ public sealed class InvoicePersistenceTests(PostgresFixture database)
         invoice.UpdateFields(Clerk, Start, Fields);
         await AddAsync(invoice);
 
-        await using AsyncServiceScope first = database.OpenScope(_tenant);
-        await using AsyncServiceScope second = database.OpenScope(_tenant);
+        await using AsyncServiceScope first = database.OpenScope(Tenant);
+        await using AsyncServiceScope second = database.OpenScope(Tenant);
         Invoice firstCopy = (await Repository(first).GetAsync(invoice.Id, CancellationToken)).ShouldNotBeNull();
         Invoice secondCopy = (await Repository(second).GetAsync(invoice.Id, CancellationToken)).ShouldNotBeNull();
 
@@ -176,7 +182,7 @@ public sealed class InvoicePersistenceTests(PostgresFixture database)
         var invoice = Invoice.Upload(Clerk, Start);
         await AddAsync(invoice);
 
-        await using AsyncServiceScope otherTenant = database.OpenScope(new TenantId(Guid.NewGuid()));
+        await using AsyncServiceScope otherTenant = database.OpenScope((await database.CreateTenantAsync()).Id);
 
         (await Repository(otherTenant).GetAsync(invoice.Id, CancellationToken)).ShouldBeNull();
         TenantDbContext context = otherTenant.ServiceProvider.GetRequiredService<TenantDbContext>();
@@ -202,21 +208,21 @@ public sealed class InvoicePersistenceTests(PostgresFixture database)
 
     private async Task AddAsync(Invoice invoice)
     {
-        await using AsyncServiceScope scope = database.OpenScope(_tenant);
+        await using AsyncServiceScope scope = database.OpenScope(Tenant);
         Repository(scope).Add(invoice);
         await UnitOfWork(scope).CommitAsync(CancellationToken);
     }
 
     private async Task<Invoice?> GetAsync(InvoiceId id)
     {
-        await using AsyncServiceScope scope = database.OpenScope(_tenant);
+        await using AsyncServiceScope scope = database.OpenScope(Tenant);
         return await Repository(scope).GetAsync(id, CancellationToken);
     }
 
     // Plain SQL, so the test checks what is stored rather than what EF Core maps back.
     private async Task<IReadOnlyList<AuditRow>> AuditRowsAsync(InvoiceId id)
     {
-        await using var dataSource = NpgsqlDataSource.Create(database.ConnectionString);
+        await using var dataSource = NpgsqlDataSource.Create(database.ConnectionString(_testTenant.Database));
         await using NpgsqlCommand command = dataSource.CreateCommand(
             """
             SELECT tenant_id, action, actor_id, actor_name, changes::text, reason, correlation_id
