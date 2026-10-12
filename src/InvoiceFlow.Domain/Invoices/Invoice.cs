@@ -9,7 +9,7 @@ public sealed class Invoice : AggregateRoot
     public const int MaxReasonLength = 1000;
     public const int MaxPaymentReferenceLength = 100;
 
-    // The latest local time anywhere is UTC+14, so a payment dated today by any user is never in the future.
+    // The latest local time anywhere is UTC+14, so a date that is today for any user is never in the future.
     private static readonly TimeSpan LatestUtcOffset = TimeSpan.FromHours(14);
 
     private static readonly FrozenDictionary<(InvoiceStatus From, InvoiceAction Action), InvoiceStatus> Transitions =
@@ -27,9 +27,11 @@ public sealed class Invoice : AggregateRoot
             [(InvoiceStatus.ExtractionFailed, InvoiceAction.EnterManually)] = InvoiceStatus.NeedsReview,
             [(InvoiceStatus.ExtractionFailed, InvoiceAction.Cancel)] = InvoiceStatus.Cancelled,
 
+            [(InvoiceStatus.Extracted, InvoiceAction.UpdateFields)] = InvoiceStatus.Extracted,
             [(InvoiceStatus.Extracted, InvoiceAction.Submit)] = InvoiceStatus.PendingApproval,
             [(InvoiceStatus.Extracted, InvoiceAction.Cancel)] = InvoiceStatus.Cancelled,
 
+            [(InvoiceStatus.NeedsReview, InvoiceAction.UpdateFields)] = InvoiceStatus.NeedsReview,
             [(InvoiceStatus.NeedsReview, InvoiceAction.Submit)] = InvoiceStatus.PendingApproval,
             [(InvoiceStatus.NeedsReview, InvoiceAction.Cancel)] = InvoiceStatus.Cancelled,
 
@@ -58,6 +60,8 @@ public sealed class Invoice : AggregateRoot
     public Actor UploadedBy { get; }
 
     public DateTimeOffset UploadedAt { get; }
+
+    public InvoiceFields Fields { get; private set; } = InvoiceFields.Empty;
 
     public Actor? SubmittedBy { get; private set; }
 
@@ -93,7 +97,7 @@ public sealed class Invoice : AggregateRoot
     public void FailExtraction(Actor actor, DateTimeOffset now, string reason)
     {
         InvoiceStatus next = NextStatus(InvoiceAction.FailExtraction);
-        string validReason = RequireText(reason, nameof(reason), MaxReasonLength);
+        string validReason = Text.Require(reason, nameof(reason), MaxReasonLength);
         MoveTo(new InvoiceExtractionFailed(Id, actor, now, Status, next, validReason));
     }
 
@@ -109,9 +113,32 @@ public sealed class Invoice : AggregateRoot
         MoveTo(new InvoiceManualEntryStarted(Id, actor, now, Status, next));
     }
 
+    public void UpdateFields(Actor actor, DateTimeOffset now, InvoiceFields fields)
+    {
+        NextStatus(InvoiceAction.UpdateFields);
+        IReadOnlyList<FieldChange> changes = fields.ChangesFrom(Fields);
+
+        if (changes.Count == 0)
+        {
+            return;
+        }
+
+        Fields = fields;
+        Raise(new InvoiceFieldsCorrected(Id, actor, now, changes));
+    }
+
+    public IReadOnlyList<FieldIssue> CheckReadiness(DateTimeOffset now) => Fields.FindIssues(LatestToday(now));
+
     public void Submit(Actor actor, DateTimeOffset now)
     {
         InvoiceStatus next = NextStatus(InvoiceAction.Submit);
+        IReadOnlyList<FieldIssue> issues = CheckReadiness(now);
+
+        if (issues.Count > 0)
+        {
+            throw new InvoiceNotReadyException(issues);
+        }
+
         SubmittedBy = actor;
         MoveTo(new InvoiceSubmitted(Id, actor, now, Status, next));
     }
@@ -127,7 +154,7 @@ public sealed class Invoice : AggregateRoot
     {
         InvoiceStatus next = NextStatus(InvoiceAction.Reject);
         EnsureNotSubmittedBy(actor);
-        string validReason = RequireText(reason, nameof(reason), MaxReasonLength);
+        string validReason = Text.Require(reason, nameof(reason), MaxReasonLength);
         MoveTo(new InvoiceRejected(Id, actor, now, Status, next, validReason));
     }
 
@@ -140,9 +167,9 @@ public sealed class Invoice : AggregateRoot
     public void MarkPaid(Actor actor, DateTimeOffset now, DateOnly paidOn, string paymentReference)
     {
         InvoiceStatus next = NextStatus(InvoiceAction.MarkPaid);
-        string validReference = RequireText(paymentReference, nameof(paymentReference), MaxPaymentReferenceLength);
+        string validReference = Text.Require(paymentReference, nameof(paymentReference), MaxPaymentReferenceLength);
 
-        if (paidOn > DateOnly.FromDateTime(now.ToOffset(LatestUtcOffset).DateTime))
+        if (paidOn > LatestToday(now))
         {
             throw new BusinessRuleException(DomainErrors.Invoice.PaymentDateInFuture);
         }
@@ -155,30 +182,11 @@ public sealed class Invoice : AggregateRoot
     public void Cancel(Actor actor, DateTimeOffset now, string reason)
     {
         InvoiceStatus next = NextStatus(InvoiceAction.Cancel);
-        string validReason = RequireText(reason, nameof(reason), MaxReasonLength);
+        string validReason = Text.Require(reason, nameof(reason), MaxReasonLength);
         MoveTo(new InvoiceCancelled(Id, actor, now, Status, next, validReason));
     }
 
-    private static string RequireText(string? value, string field, int maxLength)
-    {
-        string trimmed = value?.Trim() ?? string.Empty;
-
-        if (trimmed.Length == 0)
-        {
-            throw new DomainValidationException(
-                DomainErrors.Validation.Required,
-                new Dictionary<string, object?> { ["field"] = field });
-        }
-
-        if (trimmed.Length > maxLength)
-        {
-            throw new DomainValidationException(
-                DomainErrors.Validation.MaxLength,
-                new Dictionary<string, object?> { ["field"] = field, ["max"] = maxLength });
-        }
-
-        return trimmed;
-    }
+    private static DateOnly LatestToday(DateTimeOffset now) => DateOnly.FromDateTime(now.ToOffset(LatestUtcOffset).DateTime);
 
     private InvoiceStatus NextStatus(InvoiceAction action) =>
         Transitions.TryGetValue((Status, action), out InvoiceStatus next)

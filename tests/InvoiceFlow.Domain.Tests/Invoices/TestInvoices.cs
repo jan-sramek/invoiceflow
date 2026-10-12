@@ -15,6 +15,24 @@ internal static class TestInvoices
     public static readonly Actor Approver = Actor.User("approver-1", "Adam Approver");
     public static readonly Actor Worker = Actor.System("invoiceflow-worker");
 
+    public static readonly InvoiceFields ValidFields = new()
+    {
+        SupplierName = SupplierName.Create("Acme s.r.o."),
+        InvoiceNumber = InvoiceNumber.Create("FV-2026-0117"),
+        InvoiceDate = new DateOnly(2026, 10, 1),
+        DueDate = new DateOnly(2026, 10, 31),
+        Currency = CurrencyCode.Create("CZK"),
+        Subtotal = 1000.00m,
+        TaxAmount = 210.00m,
+        TotalAmount = 1210.00m,
+        PurchaseOrderReference = PurchaseOrderReference.Create("PO-77"),
+    };
+
+    public static readonly InvoiceFields CorrectedFields = ValidFields with
+    {
+        SupplierName = SupplierName.Create("Acme Czech s.r.o."),
+    };
+
     private static readonly Dictionary<InvoiceStatus, InvoiceAction[]> PathFromUploaded = new()
     {
         [InvoiceStatus.Uploaded] = [],
@@ -32,6 +50,7 @@ internal static class TestInvoices
 
     /// <summary>
     /// An invoice uploaded by the clerk and moved to <paramref name="status"/>, with its events cleared.
+    /// It gets <see cref="ValidFields"/> as soon as fields can be edited.
     /// </summary>
     public static Invoice InStatus(InvoiceStatus status)
     {
@@ -40,6 +59,7 @@ internal static class TestInvoices
         foreach (InvoiceAction action in PathFromUploaded[status])
         {
             Perform(invoice, action);
+            FillWhenEditable(invoice);
         }
 
         invoice.ClearDomainEvents();
@@ -72,6 +92,9 @@ internal static class TestInvoices
                 break;
             case InvoiceAction.EnterManually:
                 invoice.EnterManually(actor, Now);
+                break;
+            case InvoiceAction.UpdateFields:
+                invoice.UpdateFields(actor, Now, CorrectedFields);
                 break;
             case InvoiceAction.Submit:
                 invoice.Submit(actor, Now);
@@ -108,4 +131,12 @@ internal static class TestInvoices
         InvoiceAction.Approve or InvoiceAction.Reject or InvoiceAction.MarkPaid => Approver,
         _ => Clerk,
     };
+
+    private static void FillWhenEditable(Invoice invoice)
+    {
+        if (invoice.Status is InvoiceStatus.Extracted or InvoiceStatus.NeedsReview && invoice.Fields == InvoiceFields.Empty)
+        {
+            invoice.UpdateFields(Clerk, Now, ValidFields);
+        }
+    }
 }

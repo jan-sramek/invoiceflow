@@ -24,6 +24,11 @@ public sealed record Money
     {
         ArgumentNullException.ThrowIfNull(currency);
 
+        return new Money(ValidAmount(amount), currency);
+    }
+
+    internal static decimal ValidAmount(decimal amount)
+    {
         if (decimal.Round(amount, MaxDecimals) != amount)
         {
             throw new DomainValidationException(
@@ -38,7 +43,7 @@ public sealed record Money
                 new Dictionary<string, object?> { ["max"] = MaxAbsoluteAmount });
         }
 
-        return new Money(amount, currency);
+        return amount;
     }
 
     public Money Add(Money other)

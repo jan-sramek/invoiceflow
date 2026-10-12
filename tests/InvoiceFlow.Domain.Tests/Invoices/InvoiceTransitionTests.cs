@@ -5,6 +5,7 @@ using InvoiceFlow.Domain.Invoices;
 namespace InvoiceFlow.Domain.Tests.Invoices;
 
 [Trait("Rule", "BR-01")]
+[Trait("Rule", "BR-12")]
 public class InvoiceTransitionTests
 {
     // Written out separately from the table in Invoice, so a change to either one fails a test.
@@ -20,8 +21,10 @@ public class InvoiceTransitionTests
             [(InvoiceStatus.ExtractionFailed, InvoiceAction.RetryExtraction)] = (InvoiceStatus.Processing, typeof(InvoiceExtractionRetried)),
             [(InvoiceStatus.ExtractionFailed, InvoiceAction.EnterManually)] = (InvoiceStatus.NeedsReview, typeof(InvoiceManualEntryStarted)),
             [(InvoiceStatus.ExtractionFailed, InvoiceAction.Cancel)] = (InvoiceStatus.Cancelled, typeof(InvoiceCancelled)),
+            [(InvoiceStatus.Extracted, InvoiceAction.UpdateFields)] = (InvoiceStatus.Extracted, typeof(InvoiceFieldsCorrected)),
             [(InvoiceStatus.Extracted, InvoiceAction.Submit)] = (InvoiceStatus.PendingApproval, typeof(InvoiceSubmitted)),
             [(InvoiceStatus.Extracted, InvoiceAction.Cancel)] = (InvoiceStatus.Cancelled, typeof(InvoiceCancelled)),
+            [(InvoiceStatus.NeedsReview, InvoiceAction.UpdateFields)] = (InvoiceStatus.NeedsReview, typeof(InvoiceFieldsCorrected)),
             [(InvoiceStatus.NeedsReview, InvoiceAction.Submit)] = (InvoiceStatus.PendingApproval, typeof(InvoiceSubmitted)),
             [(InvoiceStatus.NeedsReview, InvoiceAction.Cancel)] = (InvoiceStatus.Cancelled, typeof(InvoiceCancelled)),
             [(InvoiceStatus.PendingApproval, InvoiceAction.Approve)] = (InvoiceStatus.Approved, typeof(InvoiceApproved)),
@@ -71,12 +74,15 @@ public class InvoiceTransitionTests
         invoice.Status.ShouldBe(to);
         IDomainEvent domainEvent = invoice.DomainEvents.ShouldHaveSingleItem();
         domainEvent.GetType().ShouldBe(eventType);
-        var change = (InvoiceStatusChanged)domainEvent;
-        change.InvoiceId.ShouldBe(invoice.Id);
-        change.Actor.ShouldBe(TestInvoices.ActorFor(action));
-        change.OccurredAt.ShouldBe(TestInvoices.Now);
-        change.From.ShouldBe(from);
-        change.To.ShouldBe(to);
+        domainEvent.Actor.ShouldBe(TestInvoices.ActorFor(action));
+        domainEvent.OccurredAt.ShouldBe(TestInvoices.Now);
+
+        if (domainEvent is InvoiceStatusChanged change)
+        {
+            change.InvoiceId.ShouldBe(invoice.Id);
+            change.From.ShouldBe(from);
+            change.To.ShouldBe(to);
+        }
     }
 
     [Theory]

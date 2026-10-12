@@ -4,6 +4,9 @@ namespace InvoiceFlow.Domain.Invoices;
 
 public sealed record InvoiceUploaded(InvoiceId InvoiceId, Actor Actor, DateTimeOffset OccurredAt) : IDomainEvent;
 
+public sealed record InvoiceFieldsCorrected(
+    InvoiceId InvoiceId, Actor Actor, DateTimeOffset OccurredAt, IReadOnlyList<FieldChange> Changes) : IDomainEvent;
+
 public abstract record InvoiceStatusChanged(
     InvoiceId InvoiceId, Actor Actor, DateTimeOffset OccurredAt, InvoiceStatus From, InvoiceStatus To) : IDomainEvent;
 

@@ -26,6 +26,52 @@ public class InvoiceTests
     }
 
     [Fact]
+    public void Upload_NewInvoice_HasNoFields()
+    {
+        Invoice.Upload(Clerk, Now).Fields.ShouldBe(InvoiceFields.Empty);
+    }
+
+    [Fact]
+    public void UpdateFields_ChangedFields_StoresThemAndRaisesChanges()
+    {
+        Invoice invoice = InStatus(InvoiceStatus.NeedsReview);
+        InvoiceFields edited = ValidFields with { TotalAmount = 1250m, DueDate = null };
+
+        invoice.UpdateFields(Clerk, Now, edited);
+
+        invoice.Fields.ShouldBe(edited);
+        InvoiceFieldsCorrected corrected = invoice.DomainEvents.ShouldHaveSingleItem().ShouldBeOfType<InvoiceFieldsCorrected>();
+        corrected.InvoiceId.ShouldBe(invoice.Id);
+        corrected.Actor.ShouldBe(Clerk);
+        corrected.Changes.ShouldBe(
+        [
+            new FieldChange(InvoiceField.DueDate, "2026-10-31", null),
+            new FieldChange(InvoiceField.TotalAmount, "1210.00", "1250.00"),
+        ]);
+    }
+
+    [Fact]
+    public void UpdateFields_NothingChanged_RaisesNothing()
+    {
+        Invoice invoice = InStatus(InvoiceStatus.Extracted);
+
+        invoice.UpdateFields(Clerk, Now, ValidFields with { });
+
+        invoice.DomainEvents.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void UpdateFields_DraftThatCannotBeSubmitted_IsSaved()
+    {
+        Invoice invoice = InStatus(InvoiceStatus.NeedsReview);
+        InvoiceFields draft = InvoiceFields.Empty with { TotalAmount = 0m };
+
+        invoice.UpdateFields(Clerk, Now, draft);
+
+        invoice.Fields.ShouldBe(draft);
+    }
+
+    [Fact]
     public void Submit_RecordsSubmitter()
     {
         Invoice invoice = InStatus(InvoiceStatus.NeedsReview);
@@ -33,6 +79,40 @@ public class InvoiceTests
         invoice.Submit(Clerk, Now);
 
         invoice.SubmittedBy.ShouldBe(Clerk);
+    }
+
+    [Fact]
+    [Trait("Rule", "BR-11")]
+    public void Submit_FieldsWithIssues_ThrowsWithIssuesAndChangesNothing()
+    {
+        Invoice invoice = InStatus(InvoiceStatus.NeedsReview);
+        invoice.UpdateFields(Clerk, Now, ValidFields with { SupplierName = null, Subtotal = null, TotalAmount = 0m });
+        invoice.ClearDomainEvents();
+
+        InvoiceNotReadyException exception = Should.Throw<InvoiceNotReadyException>(() => invoice.Submit(Clerk, Now));
+
+        exception.Code.ShouldBe(DomainErrors.Invoice.NotReadyForSubmission);
+        exception.Kind.ShouldBe(ErrorKind.BusinessRule);
+        exception.Issues.ShouldBe(
+        [
+            new FieldIssue(InvoiceField.SupplierName, DomainErrors.Validation.Required),
+            new FieldIssue(InvoiceField.TotalAmount, DomainErrors.Validation.MustBePositive),
+        ]);
+        invoice.Status.ShouldBe(InvoiceStatus.NeedsReview);
+        invoice.SubmittedBy.ShouldBeNull();
+        invoice.DomainEvents.ShouldBeEmpty();
+    }
+
+    [Fact]
+    [Trait("Rule", "BR-05")]
+    public void CheckReadiness_InvoiceDatedTodayInEarliestTimeZone_IsReady()
+    {
+        Invoice invoice = InStatus(InvoiceStatus.NeedsReview);
+        invoice.UpdateFields(Clerk, Now, ValidFields with { InvoiceDate = new DateOnly(2026, 10, 13), DueDate = null });
+
+        invoice.CheckReadiness(new DateTimeOffset(2026, 10, 12, 11, 0, 0, TimeSpan.Zero)).ShouldBeEmpty();
+        invoice.CheckReadiness(new DateTimeOffset(2026, 10, 12, 9, 30, 0, TimeSpan.Zero)).ShouldBe(
+            [new FieldIssue(InvoiceField.InvoiceDate, DomainErrors.Validation.DateInFuture)]);
     }
 
     [Fact]
