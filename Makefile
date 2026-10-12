@@ -23,6 +23,8 @@ up: ## Start the VM, the cluster and Ollama
 		env -u DOCKER_HOST docker context use "$$previous" >/dev/null; \
 		echo "Docker context restored to $$previous"; \
 	fi
+	@# Without br_netfilter, a pod gets no reply from a Service whose pod runs on the same node
+	@colima ssh --profile $(CLUSTER) -- sudo modprobe br_netfilter
 	@$(MAKE) --no-print-directory cluster-up ollama-up
 
 down: ollama-down ## Stop Ollama and the VM (the cluster stops with it)
