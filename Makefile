@@ -16,12 +16,15 @@ GRAFANA_CHART_VERSION := 13.5.0
 COLLECTOR_CHART_VERSION := 0.175.1
 OBSERVABILITY_NS := invoiceflow-observability
 COLLECTOR_NS := invoiceflow-collector
+INFRA_NS := invoiceflow-infra
+DB_FORWARD_PORT := 15432
 DASHBOARD_IMAGE := $(shell grep -o 'mcr.microsoft.com/dotnet/aspire-dashboard[^ ]*' deploy/observability/aspire-dashboard.yaml)
 DASHBOARD_TOKEN_PATTERN := login?t=[0-9a-f]*
 
 .DEFAULT_GOAL := help
 .PHONY: help up down doctor cluster-up cluster-down cluster-status ollama-up ollama-down ollama-check \
-	observability-up observability-down grafana-password dashboard-url telemetry-check dashboard-up dashboard-down
+	observability-up observability-down grafana-password dashboard-url telemetry-check dashboard-up dashboard-down \
+	postgres-up postgres-down postgres-password db-forward psql
 
 help:
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -122,3 +125,23 @@ dashboard-up: ## Run the Aspire Dashboard in Docker for apps started with dotnet
 
 dashboard-down: ## Stop the Aspire Dashboard started by dashboard-up
 	@docker rm -f invoiceflow-dashboard >/dev/null 2>&1 && echo "Dashboard stopped" || echo "Dashboard was not running"
+
+postgres-up: doctor ## Install PostgreSQL in the infra namespace
+	@$(KUBECTL) apply -f deploy/kubernetes/infra-namespace.yaml
+	@./scripts/create-local-secrets.sh
+	@$(KUBECTL) apply -f deploy/kubernetes/postgres/
+	@$(KUBECTL) rollout status statefulset/postgres --namespace $(INFRA_NS) --timeout 5m
+
+postgres-down: doctor ## Remove PostgreSQL, including its data and password
+	@$(KUBECTL) delete -f deploy/kubernetes/postgres/ --ignore-not-found
+	@$(KUBECTL) delete pvc/data-postgres-0 secret/postgres-superuser --namespace $(INFRA_NS) --ignore-not-found
+
+postgres-password: ## Print the PostgreSQL superuser password
+	@$(KUBECTL) get secret postgres-superuser --namespace $(INFRA_NS) -o jsonpath='{.data.password}' | base64 -d; echo
+
+db-forward: doctor ## Forward PostgreSQL to localhost:15432 (Ctrl+C to stop)
+	@echo "Connect to localhost:$(DB_FORWARD_PORT) as postgres (password from make postgres-password)"
+	@$(KUBECTL) port-forward service/postgres $(DB_FORWARD_PORT):5432 --namespace $(INFRA_NS)
+
+psql: doctor ## Open psql as the superuser inside the PostgreSQL pod
+	@$(KUBECTL) exec -it postgres-0 --namespace $(INFRA_NS) -- psql -U postgres
