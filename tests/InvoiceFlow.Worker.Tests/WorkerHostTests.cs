@@ -8,18 +8,28 @@ namespace InvoiceFlow.Worker.Tests;
 
 public class WorkerHostTests
 {
-    [Theory]
-    [InlineData("/health/live")]
-    [InlineData("/health/ready")]
-    public async Task Get_HealthyWorker_ReturnsHealthy(string path)
+    [Fact]
+    public async Task GetLive_CatalogUnreachable_ReturnsHealthy()
     {
         await using WorkerFactory worker = new();
         using HttpClient client = worker.CreateClient();
 
-        HttpResponseMessage response = await client.GetAsync(path, TestContext.Current.CancellationToken);
+        HttpResponseMessage response = await client.GetAsync("/health/live", TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldBe("Healthy");
+    }
+
+    [Fact]
+    public async Task GetReady_CatalogUnreachable_ReturnsUnhealthy()
+    {
+        await using WorkerFactory worker = new();
+        using HttpClient client = worker.CreateClient();
+
+        HttpResponseMessage response = await client.GetAsync("/health/ready", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+        (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldBe("Unhealthy");
     }
 
     [Fact]
