@@ -17,6 +17,12 @@ public static class ApplicationErrors
         public const string Failed = "validation.failed";
     }
 
+    public static class Auth
+    {
+        [Description("Sign-in required")]
+        public const string UserRequired = "auth.user_required";
+    }
+
     public static class Invoice
     {
         /// <summary>

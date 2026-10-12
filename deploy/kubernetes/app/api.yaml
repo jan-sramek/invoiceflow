@@ -55,6 +55,9 @@ spec:
             # make app-up fills in the id; tenants come from access tokens in Stage 4
             - name: Tenancy__DevelopmentTenantId
               value: "${DEVELOPMENT_TENANT_ID}"
+            # X-Development-User personas until Keycloak sign-in in Stage 4
+            - name: Authentication__DevelopmentUsers
+              value: "true"
           ports:
             - name: http
               containerPort: 8080

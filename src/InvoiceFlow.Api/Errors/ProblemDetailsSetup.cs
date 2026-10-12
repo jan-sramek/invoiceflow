@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using InvoiceFlow.Application.Errors;
 using InvoiceFlow.ServiceDefaults.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -65,6 +66,7 @@ internal static class ProblemDetailsSetup
     // Responses the framework produces without a body, such as an unknown route
     private static string DefaultCode(int status) => status switch
     {
+        StatusCodes.Status401Unauthorized => ApplicationErrors.Auth.UserRequired,
         StatusCodes.Status404NotFound => ApiErrors.Request.NotFound,
         StatusCodes.Status405MethodNotAllowed => ApiErrors.Request.MethodNotAllowed,
         StatusCodes.Status415UnsupportedMediaType => ApiErrors.Request.UnsupportedMediaType,

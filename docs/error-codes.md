@@ -63,10 +63,17 @@ A status of *field* means the code appears only inside `errors`.
 | <a id="invoice.payment_date_in_future"></a>`invoice.payment_date_in_future` | 422 | The payment date is later than today. | | Enter the date the payment was made. |
 | <a id="approval.own_invoice"></a>`approval.own_invoice` | 403 | Nobody may approve or reject an invoice they submitted. | | Ask another approver. |
 
+## Access
+
+| Code | Status | Meaning | Params | What to do |
+| --- | --- | --- | --- | --- |
+| <a id="auth.user_required"></a>`auth.user_required` | 401 | The request needs a signed-in user. | | Sign in. Until Keycloak sign-in exists, send `X-Development-User: clerk`, `approver` or `finance`. |
+
 ## Concurrency and availability
 
 | Code | Status | Meaning | Params | What to do |
 | --- | --- | --- | --- | --- |
+| <a id="concurrency.if_match_required"></a>`concurrency.if_match_required` | 428 | A write came without the `ETag` of the version it changes. | | Send the `ETag` from the last read as `If-Match`. |
 | <a id="concurrency.stale_version"></a>`concurrency.stale_version` | 412 | Someone changed the resource after you read it. | | Reload, reapply your change and retry. |
 | <a id="tenant.unavailable"></a>`tenant.unavailable` | 503 | Your organisation's data store is not reachable. | | Retry after `Retry-After` seconds. |
 | <a id="server.unexpected"></a>`server.unexpected` | 500 | An unexpected error occurred. | | Report it with the `traceId`. |
