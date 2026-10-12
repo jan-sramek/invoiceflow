@@ -21,6 +21,9 @@ APP_NS := invoiceflow
 DB_FORWARD_PORT := 15432
 S3_FORWARD_PORT := 18333
 RABBITMQ_UI_PORT := 15672
+KEYCLOAK_ADMIN_PORT := 18080
+# Rebuilt and rolled out only when the Dockerfile changes
+KEYCLOAK_TAG := $(shell git hash-object deploy/images/keycloak/Dockerfile | cut -c1-12)
 DASHBOARD_IMAGE := $(shell grep -o 'mcr.microsoft.com/dotnet/aspire-dashboard[^ ]*' deploy/observability/aspire-dashboard.yaml)
 DASHBOARD_TOKEN_PATTERN := login?t=[0-9a-f]*
 REGISTRY := localhost:5001
@@ -35,7 +38,8 @@ endif
 	observability-up observability-down grafana-password dashboard-url telemetry-check dashboard-up dashboard-down \
 	postgres-up postgres-down postgres-password db-forward psql \
 	seaweedfs-up seaweedfs-down s3-credentials s3-forward s3-check images \
-	app-up app-down app-check rabbitmq-up rabbitmq-down rabbitmq-password rabbitmq-ui
+	app-up app-down app-check rabbitmq-up rabbitmq-down rabbitmq-password rabbitmq-ui \
+	keycloak-image keycloak-up keycloak-down keycloak-password keycloak-admin
 
 help:
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -223,3 +227,28 @@ rabbitmq-password: ## Print the RabbitMQ admin password
 rabbitmq-ui: doctor ## Forward the RabbitMQ management UI to localhost:15672 (Ctrl+C to stop)
 	@echo "RabbitMQ UI: http://localhost:$(RABBITMQ_UI_PORT) (user admin, password from make rabbitmq-password)"
 	@$(KUBECTL) port-forward service/rabbitmq $(RABBITMQ_UI_PORT):15672 --namespace $(INFRA_NS)
+
+keycloak-image: doctor ## Build the Keycloak image and push it to the cluster registry
+	@docker buildx build --quiet --push --tag $(REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG) deploy/images/keycloak >/dev/null
+	@echo "Pushed $(REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG)"
+
+keycloak-up: keycloak-image ## Install Keycloak with its own database in PostgreSQL (run postgres-up first)
+	@./scripts/create-local-secrets.sh
+	@./scripts/postgres-database.sh keycloak keycloak-db
+	@sed 's/$${KEYCLOAK_TAG}/$(KEYCLOAK_TAG)/g' deploy/kubernetes/keycloak/keycloak.yaml | $(KUBECTL) apply -f -
+	@$(KUBECTL) rollout status deployment/keycloak --namespace $(INFRA_NS) --timeout 5m
+	@echo "Sign-in page: http://auth.invoiceflow.localhost:8080/realms/master/account"
+	@echo "Admin console: make keycloak-admin"
+
+keycloak-down: doctor ## Remove Keycloak, including its database and credentials
+	@$(KUBECTL) delete -f deploy/kubernetes/keycloak/ --ignore-not-found
+	@printf '%s\n' 'DROP DATABASE IF EXISTS keycloak WITH (FORCE);' 'DROP ROLE IF EXISTS keycloak;' \
+		| $(KUBECTL) exec -i postgres-0 --namespace $(INFRA_NS) -- psql -U postgres -v ON_ERROR_STOP=1 -q
+	@$(KUBECTL) delete secret/keycloak-db secret/keycloak-admin --namespace $(INFRA_NS) --ignore-not-found
+
+keycloak-password: ## Print the password of the temporary Keycloak admin
+	@$(KUBECTL) get secret keycloak-admin --namespace $(INFRA_NS) -o jsonpath='{.data.password}' | base64 -d; echo
+
+keycloak-admin: doctor ## Forward the Keycloak admin console to localhost:18080 (Ctrl+C to stop)
+	@echo "Admin console: http://localhost:$(KEYCLOAK_ADMIN_PORT)/admin (user admin, password from make keycloak-password)"
+	@$(KUBECTL) port-forward service/keycloak $(KEYCLOAK_ADMIN_PORT):8080 --namespace $(INFRA_NS)

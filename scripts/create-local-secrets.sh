@@ -27,6 +27,8 @@ ensure_secret() {
 ensure_secret invoiceflow-infra postgres-superuser password
 ensure_secret invoiceflow-infra seaweedfs-s3 access-key secret-key
 ensure_secret invoiceflow-infra rabbitmq-admin password
+ensure_secret invoiceflow-infra keycloak-db password
+ensure_secret invoiceflow-infra keycloak-admin password
 # Application credentials live next to the applications that use them
 ensure_secret invoiceflow rabbitmq-api password
 ensure_secret invoiceflow rabbitmq-worker password

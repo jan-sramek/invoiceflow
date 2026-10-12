@@ -1,0 +1,157 @@
+# All state lives in PostgreSQL, so a Deployment is enough
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: invoiceflow-infra
+  labels:
+    app.kubernetes.io/name: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: keycloak
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: keycloak
+          # make keycloak-up fills in the tag
+          image: localhost:5001/invoiceflow-keycloak:${KEYCLOAK_TAG}
+          env:
+            - name: KC_DB_URL
+              value: jdbc:postgresql://postgres.invoiceflow-infra.svc.cluster.local:5432/keycloak
+            - name: KC_DB_USERNAME
+              value: keycloak
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-db
+                  key: password
+            # Single node; with the default cache it waits for its previous pod to join a cluster
+            - name: KC_CACHE
+              value: local
+            # Issuer and sign-in pages always use the browser-facing name; pods calling the
+            # Service get token and key endpoints on the internal address instead
+            - name: KC_HOSTNAME
+              value: http://auth.invoiceflow.localhost:8080
+            - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
+              value: "true"
+            # The admin console is not routed by the ingress, only reachable through make keycloak-admin
+            - name: KC_HOSTNAME_ADMIN
+              value: http://localhost:18080
+            # HTTPS with locally trusted certificates comes in Stage 4
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            - name: KC_LOG_CONSOLE_OUTPUT
+              value: json
+            - name: JAVA_OPTS_KC_HEAP
+              value: -XX:MaxRAMPercentage=50 -XX:InitialRAMPercentage=25
+            # Temporary admin, created only while the master realm has no admin yet
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              value: admin
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin
+                  key: password
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: management
+              containerPort: 9000
+          startupProbe:
+            httpGet:
+              path: /health/started
+              port: management
+            periodSeconds: 2
+            failureThreshold: 90
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: management
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: management
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 200m
+              memory: 640Mi
+            limits:
+              memory: 1Gi
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: data
+              mountPath: /opt/keycloak/data
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: invoiceflow-infra
+  labels:
+    app.kubernetes.io/name: keycloak
+spec:
+  selector:
+    app.kubernetes.io/name: keycloak
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+# Sign-in pages and OIDC endpoints only; /admin stays off the ingress (NFR-SEC-12)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak
+  namespace: invoiceflow-infra
+  labels:
+    app.kubernetes.io/name: keycloak
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: auth.invoiceflow.localhost
+      http:
+        paths:
+          - path: /realms
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  name: http
+          - path: /resources
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  name: http
