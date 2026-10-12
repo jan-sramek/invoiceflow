@@ -8,6 +8,7 @@ public enum InvoiceAction
     FailExtraction,
     RetryExtraction,
     EnterManually,
+    UpdateFields,
     Submit,
     Approve,
     Reject,
