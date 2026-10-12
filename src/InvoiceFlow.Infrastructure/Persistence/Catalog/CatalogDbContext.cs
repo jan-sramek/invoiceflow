@@ -1,5 +1,6 @@
 using InvoiceFlow.Domain.Tenants;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace InvoiceFlow.Infrastructure.Persistence.Catalog;
 
@@ -10,7 +11,9 @@ internal sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> option
     public DbSet<TenantDatabase> TenantDatabases => Set<TenantDatabase>();
 
     public static void Configure(DbContextOptionsBuilder options, string connectionString) =>
-        options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention();
+        options
+            .UseNpgsql(new NpgsqlConnectionStringBuilder(connectionString).WithoutGssEncryption().ConnectionString)
+            .UseSnakeCaseNamingConvention();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -40,6 +43,9 @@ internal sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> option
             database.Property(d => d.DatabaseName).HasMaxLength(63);
             database.Property(d => d.SslMode).HasConversion<string>().HasMaxLength(16);
             database.Property(d => d.CredentialsKey).HasMaxLength(253);
+            database.Property(d => d.RuntimeRole).HasMaxLength(63);
+            database.Property(d => d.SchemaVersion).HasMaxLength(150);
+            database.Property(d => d.LastMigrationError).HasMaxLength(TenantDatabase.MaxErrorLength);
         });
     }
 }

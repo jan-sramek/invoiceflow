@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <ItemGroup>
+    <ProjectReference Include="..\InvoiceFlow.Infrastructure\InvoiceFlow.Infrastructure.csproj" />
+    <ProjectReference Include="..\InvoiceFlow.ServiceDefaults\InvoiceFlow.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+</Project>

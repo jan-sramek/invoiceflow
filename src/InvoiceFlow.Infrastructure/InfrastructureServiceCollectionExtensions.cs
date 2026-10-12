@@ -2,10 +2,12 @@ using InvoiceFlow.Application.Abstractions.Context;
 using InvoiceFlow.Application.Abstractions.Persistence;
 using InvoiceFlow.Infrastructure.Persistence;
 using InvoiceFlow.Infrastructure.Persistence.Catalog;
+using InvoiceFlow.Infrastructure.Persistence.SchemaMigration;
 using InvoiceFlow.Infrastructure.Persistence.Tenant;
 using InvoiceFlow.Infrastructure.Tenancy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace InvoiceFlow.Infrastructure;
 
@@ -15,17 +17,12 @@ public static class InfrastructureServiceCollectionExtensions
 
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        string catalogConnectionString = configuration.GetConnectionString(CatalogConnectionStringName)
-            ?? throw new InvalidOperationException($"Connection string '{CatalogConnectionStringName}' is missing.");
-
+        services.AddCatalog(configuration);
         services.AddOptions<TenancyOptions>()
             .Bind(configuration.GetSection(TenancyOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
         services.AddMemoryCache();
-
-        services.AddDbContextFactory<CatalogDbContext>(options =>
-            CatalogDbContext.Configure(options, catalogConnectionString));
 
         services.AddScoped<ITenantContext, DevelopmentTenantContext>();
         services.AddSingleton<TenantConnectionResolver>();
@@ -38,5 +35,29 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         return services;
+    }
+
+    /// <summary>
+    /// The catalog connection string here must belong to the role that owns the catalog schema.
+    /// </summary>
+    public static IServiceCollection AddSchemaMigrator(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddCatalog(configuration);
+        services.AddOptions<SchemaMigrationOptions>()
+            .Bind(configuration.GetSection(SchemaMigrationOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<ISchemaMigrator, SchemaMigrator>();
+
+        return services;
+    }
+
+    private static void AddCatalog(this IServiceCollection services, IConfiguration configuration)
+    {
+        string connectionString = configuration.GetConnectionString(CatalogConnectionStringName)
+            ?? throw new InvalidOperationException($"Connection string '{CatalogConnectionStringName}' is missing.");
+
+        services.AddDbContextFactory<CatalogDbContext>(options => CatalogDbContext.Configure(options, connectionString));
     }
 }

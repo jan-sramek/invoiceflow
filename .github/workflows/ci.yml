@@ -69,6 +69,9 @@ jobs:
           - image: Worker
             dockerfile: src/InvoiceFlow.Worker/Dockerfile
             context: .
+          - image: Migrator
+            dockerfile: src/InvoiceFlow.Migrator/Dockerfile
+            context: .
           - image: Keycloak
             dockerfile: deploy/images/keycloak/Dockerfile
             context: deploy/images/keycloak

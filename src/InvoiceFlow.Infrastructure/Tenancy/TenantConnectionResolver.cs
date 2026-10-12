@@ -1,4 +1,3 @@
-using System.Text.Json;
 using InvoiceFlow.Application.Errors;
 using InvoiceFlow.Domain.Tenants;
 using InvoiceFlow.Infrastructure.Persistence.Catalog;
@@ -17,8 +16,6 @@ internal sealed class TenantConnectionResolver(
     IMemoryCache cache,
     IOptions<TenancyOptions> options)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
     /// <exception cref="TenantUnavailableException">Unknown or inactive tenant, or no readable credentials.</exception>
     public async Task<string> GetConnectionStringAsync(TenantId tenantId, CancellationToken cancellationToken) =>
         (await cache.GetOrCreateAsync(
@@ -38,39 +35,11 @@ internal sealed class TenantConnectionResolver(
             .SingleOrDefaultAsync(cancellationToken)
             ?? throw new TenantUnavailableException();
 
-        Credentials credentials = await ReadCredentialsAsync(database.CredentialsKey, cancellationToken);
+        TenantCredentials credentials = await TenantCredentials.ReadAsync(
+            options.Value.CredentialsPath, database.CredentialsKey, cancellationToken);
 
-        return new NpgsqlConnectionStringBuilder
-        {
-            Host = database.Host,
-            Port = database.Port,
-            Database = database.DatabaseName,
-            Username = credentials.Username,
-            Password = credentials.Password,
-            SslMode = database.SslMode,
-            MaxPoolSize = options.Value.MaxPoolSize,
-        }.ConnectionString;
+        NpgsqlConnectionStringBuilder connectionString = credentials.ConnectTo(database);
+        connectionString.MaxPoolSize = options.Value.MaxPoolSize;
+        return connectionString.ConnectionString;
     }
-
-    private async Task<Credentials> ReadCredentialsAsync(string key, CancellationToken cancellationToken)
-    {
-        string path = Path.Combine(options.Value.CredentialsPath, key);
-
-        try
-        {
-            await using FileStream file = File.OpenRead(path);
-            Credentials? credentials =
-                await JsonSerializer.DeserializeAsync<Credentials>(file, JsonOptions, cancellationToken);
-
-            return credentials is { Username.Length: > 0, Password.Length: > 0 }
-                ? credentials
-                : throw new TenantUnavailableException();
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
-        {
-            throw new TenantUnavailableException(exception);
-        }
-    }
-
-    private sealed record Credentials(string Username, string Password);
 }
