@@ -22,8 +22,13 @@ fi
 
 if docker info >/dev/null 2>&1; then
   ok "Docker engine reachable"
+  if colima ssh --profile invoiceflow -- test -d /proc/sys/net/bridge 2>/dev/null; then
+    ok "br_netfilter loaded in the VM"
+  else
+    fail "br_netfilter not loaded in the VM (run: make up)"
+  fi
 else
-  fail "Docker engine not reachable (run: colima start --profile invoiceflow)"
+  fail "Docker engine not reachable (run: make up)"
 fi
 
 if [[ "${KUBECONFIG:-}" == "$expected_kubeconfig" ]]; then
