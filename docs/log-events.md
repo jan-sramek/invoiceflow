@@ -21,12 +21,13 @@ New areas get the next free thousand.
 | 101 | TenantMigrated | Information | Infrastructure | `TenantId`, `SchemaVersion` |
 | 102 | TenantMigrationFailed | Error | Infrastructure | `TenantId`, exception |
 | 103 | SchemaMigrationFinished | Information, Warning if any tenant failed | Infrastructure | `Succeeded`, `Failed` |
+| 200 | UnexpectedError | Error | Api | exception |
 
 ## Framework events we rely on
 
 | Category | Event | Notes |
 | --- | --- | --- |
-| `Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware` | 9 | One line per request: `Method`, `Path`, `StatusCode`, `Duration`. No query string, headers or bodies. Health checks are skipped. |
+| `Microsoft.AspNetCore.HttpLogging.HttpLoggingMiddleware` | 9 | One line per request: `Method`, `Path`, `StatusCode`, `Duration`, and `ErrorCode` on error responses. No query string, headers or bodies. Health checks are skipped. |
 
 ## Rules
 

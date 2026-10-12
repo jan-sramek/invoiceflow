@@ -31,6 +31,7 @@ internal static class LoggingSetup
                 | HttpLoggingFields.Duration;
             options.CombineLogs = true;
         });
+        builder.Services.AddHttpLoggingInterceptor<ErrorCodeLoggingInterceptor>();
 
         builder.Services.AddHostedService<ServiceStartedLogger>();
     }
