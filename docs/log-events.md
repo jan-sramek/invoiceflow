@@ -22,6 +22,8 @@ New areas get the next free thousand.
 | 102 | TenantMigrationFailed | Error | Infrastructure | `TenantId`, exception |
 | 103 | SchemaMigrationFinished | Information, Warning if any tenant failed | Infrastructure | `Succeeded`, `Failed` |
 | 200 | UnexpectedError | Error | Api | exception |
+| 300 | UseCaseCompleted | Debug | Application | `UseCase`, `Duration` |
+| 301 | UseCaseRejected | Information | Application | `UseCase`, `ErrorCode`, `Duration` |
 
 ## Framework events we rely on
 

@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\InvoiceFlow.Api\InvoiceFlow.Api.csproj" />
     <ProjectReference Include="..\..\src\InvoiceFlow.Infrastructure\InvoiceFlow.Infrastructure.csproj" />
+    <ProjectReference Include="..\InvoiceFlow.Testing\InvoiceFlow.Testing.csproj" />
   </ItemGroup>
 
   <ItemGroup>

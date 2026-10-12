@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using InvoiceFlow.Api.Errors;
+using InvoiceFlow.Application;
 using InvoiceFlow.Infrastructure;
 using InvoiceFlow.ServiceDefaults;
 using InvoiceFlow.ServiceDefaults.Health;
@@ -8,6 +9,7 @@ using Scalar.AspNetCore;
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHealthChecks().AddCatalogCheck(HealthEndpoints.ReadyTag);
 

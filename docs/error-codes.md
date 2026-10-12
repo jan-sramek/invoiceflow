@@ -57,6 +57,7 @@ A status of *field* means the code appears only inside `errors`.
 
 | Code | Status | Meaning | Params | What to do |
 | --- | --- | --- | --- | --- |
+| <a id="invoice.not_found"></a>`invoice.not_found` | 404 | No invoice with this id exists for your organisation. | | Check the link, or go back to the invoice list. |
 | <a id="invoice.invalid_transition"></a>`invoice.invalid_transition` | 409 | The invoice's status does not allow this action. | `from`, `action` | Reload the invoice and choose an allowed action. |
 | <a id="invoice.not_ready_for_submission"></a>`invoice.not_ready_for_submission` | 422 | Fields needed for submission are missing or inconsistent; `errors` lists them. | | Complete the fields in `errors`, then submit again. |
 | <a id="invoice.payment_date_in_future"></a>`invoice.payment_date_in_future` | 422 | The payment date is later than today. | | Enter the date the payment was made. |

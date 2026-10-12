@@ -17,6 +17,15 @@ public static class ApplicationErrors
         public const string Failed = "validation.failed";
     }
 
+    public static class Invoice
+    {
+        /// <summary>
+        /// Also returned for invoices of other tenants, so the response never confirms that an id exists.
+        /// </summary>
+        [Description("Invoice not found")]
+        public const string NotFound = "invoice.not_found";
+    }
+
     public static class Concurrency
     {
         [Description("Changed by someone else")]

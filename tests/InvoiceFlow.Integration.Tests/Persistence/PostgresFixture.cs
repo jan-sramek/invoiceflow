@@ -38,6 +38,13 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public int Port => _container.GetMappedPublicPort(PostgreSqlBuilder.PostgreSqlPort);
 
+    public string CatalogConnectionString => ConnectionString(CatalogDatabase);
+
+    /// <summary>
+    /// Where <see cref="CreateTenantAsync"/> writes tenant credentials, one file per database.
+    /// </summary>
+    public string CredentialsPath => _credentials.FullName;
+
     public async ValueTask InitializeAsync()
     {
         await _container.StartAsync();

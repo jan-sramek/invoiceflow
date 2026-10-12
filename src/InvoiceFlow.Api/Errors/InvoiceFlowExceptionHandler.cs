@@ -1,5 +1,6 @@
 using System.Globalization;
 using InvoiceFlow.Api.Logging;
+using InvoiceFlow.Application.Errors;
 using InvoiceFlow.Domain.Errors;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -73,14 +74,28 @@ internal sealed partial class InvoiceFlowExceptionHandler(
             },
         };
 
-        if (exception is InvoiceNotReadyException notReady)
+        List<FieldError>? errors = exception switch
         {
-            problem.Extensions[ProblemDetailsSetup.ErrorsKey] = notReady.Issues
-                .Select(issue => new FieldError(
+            InvoiceNotReadyException notReady =>
+            [
+                .. notReady.Issues.Select(issue => new FieldError(
                     JsonPointer.FromPath(issue.Field.ToString()),
                     issue.Code,
-                    new Dictionary<string, object?>()))
-                .ToList();
+                    new Dictionary<string, object?>())),
+            ],
+            RequestValidationException invalid =>
+            [
+                .. invalid.Errors.Select(error => new FieldError(
+                    JsonPointer.FromPath(error.Property),
+                    error.Code,
+                    error.Params)),
+            ],
+            _ => null,
+        };
+
+        if (errors is not null)
+        {
+            problem.Extensions[ProblemDetailsSetup.ErrorsKey] = errors;
         }
 
         return problem;
