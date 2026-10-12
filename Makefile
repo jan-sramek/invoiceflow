@@ -20,6 +20,7 @@ INFRA_NS := invoiceflow-infra
 APP_NS := invoiceflow
 DB_FORWARD_PORT := 15432
 S3_FORWARD_PORT := 18333
+RABBITMQ_UI_PORT := 15672
 DASHBOARD_IMAGE := $(shell grep -o 'mcr.microsoft.com/dotnet/aspire-dashboard[^ ]*' deploy/observability/aspire-dashboard.yaml)
 DASHBOARD_TOKEN_PATTERN := login?t=[0-9a-f]*
 REGISTRY := localhost:5001
@@ -34,7 +35,7 @@ endif
 	observability-up observability-down grafana-password dashboard-url telemetry-check dashboard-up dashboard-down \
 	postgres-up postgres-down postgres-password db-forward psql \
 	seaweedfs-up seaweedfs-down s3-credentials s3-forward s3-check images \
-	app-up app-down app-check
+	app-up app-down app-check rabbitmq-up rabbitmq-down rabbitmq-password rabbitmq-ui
 
 help:
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -204,3 +205,21 @@ app-check: ## Send a request through the ingress and print where to find its log
 	echo "Trace id: $$trace"; \
 	echo "Log line: Grafana > Explore > Loki: {k8s_namespace_name=\"$(APP_NS)\"} |= \"$$trace\""; \
 	echo "Trace:    http://dashboard.invoiceflow.localhost:8080/traces/detail/$$trace"
+
+rabbitmq-up: doctor ## Install RabbitMQ in the infra namespace, with one user per application
+	@./scripts/create-local-secrets.sh
+	@$(KUBECTL) apply -f deploy/kubernetes/rabbitmq/
+	@$(KUBECTL) rollout status statefulset/rabbitmq --namespace $(INFRA_NS) --timeout 5m
+	@./scripts/rabbitmq-users.sh
+
+rabbitmq-down: doctor ## Remove RabbitMQ, including its data and credentials
+	@$(KUBECTL) delete -f deploy/kubernetes/rabbitmq/ --ignore-not-found
+	@$(KUBECTL) delete pvc/data-rabbitmq-0 secret/rabbitmq-admin --namespace $(INFRA_NS) --ignore-not-found
+	@$(KUBECTL) delete secret/rabbitmq-api secret/rabbitmq-worker --namespace $(APP_NS) --ignore-not-found
+
+rabbitmq-password: ## Print the RabbitMQ admin password
+	@$(KUBECTL) get secret rabbitmq-admin --namespace $(INFRA_NS) -o jsonpath='{.data.password}' | base64 -d; echo
+
+rabbitmq-ui: doctor ## Forward the RabbitMQ management UI to localhost:15672 (Ctrl+C to stop)
+	@echo "RabbitMQ UI: http://localhost:$(RABBITMQ_UI_PORT) (user admin, password from make rabbitmq-password)"
+	@$(KUBECTL) port-forward service/rabbitmq $(RABBITMQ_UI_PORT):15672 --namespace $(INFRA_NS)
