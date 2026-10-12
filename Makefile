@@ -21,7 +21,7 @@ DASHBOARD_TOKEN_PATTERN := login?t=[0-9a-f]*
 
 .DEFAULT_GOAL := help
 .PHONY: help up down doctor cluster-up cluster-down cluster-status ollama-up ollama-down ollama-check \
-	observability-up observability-down grafana-password dashboard-url dashboard-up dashboard-down
+	observability-up observability-down grafana-password dashboard-url telemetry-check dashboard-up dashboard-down
 
 help:
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -106,6 +106,9 @@ grafana-password: ## Print the Grafana admin password
 dashboard-url: doctor ## Print the login URL of the Aspire Dashboard in the cluster
 	@token=$$($(KUBECTL) logs deployment/aspire-dashboard --namespace $(OBSERVABILITY_NS) | grep -o '$(DASHBOARD_TOKEN_PATTERN)' | tail -1); \
 		echo "http://dashboard.invoiceflow.localhost:8080/$$token"
+
+telemetry-check: doctor ## Send test traces through the collector to the Aspire Dashboard
+	@./scripts/telemetry-check.sh
 
 dashboard-up: ## Run the Aspire Dashboard in Docker for apps started with dotnet run
 	@if [ -z "$$(docker ps -q --filter name=^invoiceflow-dashboard$$)" ]; then \
