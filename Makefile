@@ -21,12 +21,18 @@ DB_FORWARD_PORT := 15432
 S3_FORWARD_PORT := 18333
 DASHBOARD_IMAGE := $(shell grep -o 'mcr.microsoft.com/dotnet/aspire-dashboard[^ ]*' deploy/observability/aspire-dashboard.yaml)
 DASHBOARD_TOKEN_PATTERN := login?t=[0-9a-f]*
+REGISTRY := localhost:5001
+APPS := Api Worker
+# Commit-based tags; uncommitted changes get a unique suffix so every build rolls out
+ifndef IMAGE_TAG
+IMAGE_TAG := $(shell git rev-parse --short HEAD)$(if $(shell git status --porcelain),-dirty-$(shell date +%s))
+endif
 
 .DEFAULT_GOAL := help
 .PHONY: help up down doctor cluster-up cluster-down cluster-status ollama-up ollama-down ollama-check \
 	observability-up observability-down grafana-password dashboard-url telemetry-check dashboard-up dashboard-down \
 	postgres-up postgres-down postgres-password db-forward psql \
-	seaweedfs-up seaweedfs-down s3-credentials s3-forward s3-check
+	seaweedfs-up seaweedfs-down s3-credentials s3-forward s3-check images
 
 help:
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -168,3 +174,11 @@ s3-forward: doctor ## Forward the S3 API to localhost:18333 (Ctrl+C to stop)
 
 s3-check: doctor ## Upload, read and delete a test object through the S3 API
 	@./scripts/s3-check.sh $(S3_FORWARD_PORT)
+
+images: doctor ## Build the API and worker images and push them to the cluster registry
+	@for app in $(APPS); do \
+		image=$(REGISTRY)/invoiceflow-$$(echo $$app | tr '[:upper:]' '[:lower:]'):$(IMAGE_TAG); \
+		docker buildx build --quiet --push --file src/InvoiceFlow.$$app/Dockerfile \
+			--build-arg SOURCE_REVISION=$$(git rev-parse HEAD) --tag $$image . >/dev/null || exit 1; \
+		echo "Pushed $$image"; \
+	done
