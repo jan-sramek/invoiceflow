@@ -16,10 +16,12 @@ GRAFANA_CHART_VERSION := 13.5.0
 COLLECTOR_CHART_VERSION := 0.175.1
 OBSERVABILITY_NS := invoiceflow-observability
 COLLECTOR_NS := invoiceflow-collector
+DASHBOARD_IMAGE := $(shell grep -o 'mcr.microsoft.com/dotnet/aspire-dashboard[^ ]*' deploy/observability/aspire-dashboard.yaml)
+DASHBOARD_TOKEN_PATTERN := login?t=[0-9a-f]*
 
 .DEFAULT_GOAL := help
 .PHONY: help up down doctor cluster-up cluster-down cluster-status ollama-up ollama-down ollama-check \
-	observability-up observability-down grafana-password
+	observability-up observability-down grafana-password dashboard-url telemetry-check dashboard-up dashboard-down
 
 help:
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -85,9 +87,12 @@ observability-up: doctor ## Install Loki, Grafana and the OpenTelemetry Collecto
 		--namespace $(OBSERVABILITY_NS) -f deploy/observability/loki-values.yaml --wait --timeout 5m
 	@$(HELM) upgrade --install grafana grafana --repo $(GRAFANA_CHARTS) --version $(GRAFANA_CHART_VERSION) \
 		--namespace $(OBSERVABILITY_NS) -f deploy/observability/grafana-values.yaml --wait --timeout 5m
+	@$(KUBECTL) apply -f deploy/observability/aspire-dashboard.yaml
+	@$(KUBECTL) rollout status deployment/aspire-dashboard --namespace $(OBSERVABILITY_NS) --timeout 5m
 	@$(HELM) upgrade --install collector opentelemetry-collector --repo $(OTEL_CHARTS) --version $(COLLECTOR_CHART_VERSION) \
 		--namespace $(COLLECTOR_NS) -f deploy/observability/collector-values.yaml --wait --timeout 5m
 	@echo "Grafana: http://grafana.invoiceflow.localhost:8080 (user admin, password from make grafana-password)"
+	@echo "Aspire Dashboard: make dashboard-url"
 
 observability-down: doctor ## Remove the observability stack, including stored logs
 	@$(HELM) uninstall collector --namespace $(COLLECTOR_NS) --ignore-not-found
@@ -96,3 +101,24 @@ observability-down: doctor ## Remove the observability stack, including stored l
 
 grafana-password: ## Print the Grafana admin password
 	@$(KUBECTL) get secret grafana --namespace $(OBSERVABILITY_NS) -o jsonpath='{.data.admin-password}' | base64 -d; echo
+
+# The dashboard creates a new login token on every start and only prints it to its log
+dashboard-url: doctor ## Print the login URL of the Aspire Dashboard in the cluster
+	@token=$$($(KUBECTL) logs deployment/aspire-dashboard --namespace $(OBSERVABILITY_NS) | grep -o '$(DASHBOARD_TOKEN_PATTERN)' | tail -1); \
+		echo "http://dashboard.invoiceflow.localhost:8080/$$token"
+
+telemetry-check: doctor ## Send test traces through the collector to the Aspire Dashboard
+	@./scripts/telemetry-check.sh
+
+dashboard-up: ## Run the Aspire Dashboard in Docker for apps started with dotnet run
+	@if [ -z "$$(docker ps -q --filter name=^invoiceflow-dashboard$$)" ]; then \
+		docker run -d --rm --name invoiceflow-dashboard \
+			-p 127.0.0.1:18888:18888 -p 127.0.0.1:4317:18889 -p 127.0.0.1:4318:18890 \
+			-e Dashboard__Otlp__AuthMode=Unsecured $(DASHBOARD_IMAGE) >/dev/null; \
+		sleep 3; \
+	fi
+	@echo "OTLP endpoint: http://localhost:4317 (gRPC), http://localhost:4318 (HTTP)"
+	@echo "Dashboard: http://localhost:18888/$$(docker logs invoiceflow-dashboard 2>&1 | grep -o '$(DASHBOARD_TOKEN_PATTERN)' | tail -1)"
+
+dashboard-down: ## Stop the Aspire Dashboard started by dashboard-up
+	@docker rm -f invoiceflow-dashboard >/dev/null 2>&1 && echo "Dashboard stopped" || echo "Dashboard was not running"

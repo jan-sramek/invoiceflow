@@ -20,13 +20,25 @@ config:
   exporters:
     otlphttp/loki:
       endpoint: http://loki.invoiceflow-observability.svc.cluster.local:3100/otlp
+    otlp/aspire:
+      endpoint: aspire-dashboard.invoiceflow-observability.svc.cluster.local:18889
+      tls:
+        insecure: true
   service:
     pipelines:
       logs:
         exporters:
           - otlphttp/loki
-      metrics: null
-      traces: null
+      metrics:
+        receivers:
+          - otlp
+        exporters:
+          - otlp/aspire
+      traces:
+        receivers:
+          - otlp
+        exporters:
+          - otlp/aspire
 
 ports:
   jaeger-compact:
