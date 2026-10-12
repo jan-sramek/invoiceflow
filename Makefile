@@ -27,7 +27,9 @@ KEYCLOAK_TAG := $(shell git hash-object deploy/images/keycloak/Dockerfile | cut 
 DASHBOARD_IMAGE := $(shell grep -o 'mcr.microsoft.com/dotnet/aspire-dashboard[^ ]*' deploy/observability/aspire-dashboard.yaml)
 DASHBOARD_TOKEN_PATTERN := login?t=[0-9a-f]*
 REGISTRY := localhost:5001
-APPS := Api Worker
+APPS := Api Worker Migrator
+# Fixed, so every rebuild of the local environment gets the same tenant; not a secret
+DEVELOPMENT_TENANT_ID := 01a130f4-cc70-7419-9b64-feec3b283b96
 # Commit-based tags; uncommitted changes get a unique suffix so every build rolls out
 ifndef IMAGE_TAG
 IMAGE_TAG := $(shell git rev-parse --short HEAD)$(if $(shell git status --porcelain),-dirty-$(shell date +%s))
@@ -39,7 +41,8 @@ endif
 	postgres-up postgres-down postgres-password db-forward psql \
 	seaweedfs-up seaweedfs-down s3-credentials s3-forward s3-check images \
 	app-up app-down app-check rabbitmq-up rabbitmq-down rabbitmq-password rabbitmq-ui \
-	keycloak-image keycloak-up keycloak-down keycloak-password keycloak-admin
+	keycloak-image keycloak-up keycloak-down keycloak-password keycloak-admin \
+	db-up db-migrate db-down
 
 help:
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -161,6 +164,26 @@ db-forward: doctor ## Forward PostgreSQL to localhost:15432 (Ctrl+C to stop)
 psql: doctor ## Open psql as the superuser inside the PostgreSQL pod
 	@$(KUBECTL) exec -it postgres-0 --namespace $(INFRA_NS) -- psql -U postgres
 
+# The tenant can only be registered once the catalog schema exists, hence two migrations
+db-up: images ## Create the catalog and the development tenant's database, then migrate both (run postgres-up first)
+	@./scripts/create-local-secrets.sh
+	@./scripts/app-databases.sh
+	@./scripts/run-migrator.sh $(IMAGE_TAG)
+	@./scripts/register-development-tenant.sh $(DEVELOPMENT_TENANT_ID)
+	@./scripts/run-migrator.sh $(IMAGE_TAG)
+
+db-migrate: images ## Migrate the catalog, then every tenant database
+	@./scripts/run-migrator.sh $(IMAGE_TAG)
+
+db-down: doctor ## Remove the catalog and the development tenant's database, including data and credentials
+	@$(KUBECTL) delete job/migrator --namespace $(APP_NS) --ignore-not-found
+	@printf '%s\n' 'DROP DATABASE IF EXISTS tenant_development WITH (FORCE);' \
+		'DROP DATABASE IF EXISTS invoiceflow_catalog WITH (FORCE);' \
+		'DROP ROLE IF EXISTS tenant_development_app, tenant_development_migrator, catalog_app, catalog_migrator;' \
+		| $(KUBECTL) exec -i postgres-0 --namespace $(INFRA_NS) -- psql -U postgres -v ON_ERROR_STOP=1 -q
+	@$(KUBECTL) delete secret/catalog-app secret/catalog-migrator secret/invoiceflow-tenant-databases \
+		secret/invoiceflow-tenant-migrations --namespace $(APP_NS) --ignore-not-found
+
 seaweedfs-up: doctor ## Install SeaweedFS (S3 storage) in the infra namespace
 	@$(KUBECTL) apply -f deploy/kubernetes/infra-namespace.yaml
 	@./scripts/create-local-secrets.sh
@@ -182,7 +205,7 @@ s3-forward: doctor ## Forward the S3 API to localhost:18333 (Ctrl+C to stop)
 s3-check: doctor ## Upload, read and delete a test object through the S3 API
 	@./scripts/s3-check.sh $(S3_FORWARD_PORT)
 
-images: doctor ## Build the API and worker images and push them to the cluster registry
+images: doctor ## Build the API, worker and migrator images and push them to the cluster registry
 	@for app in $(APPS); do \
 		image=$(REGISTRY)/invoiceflow-$$(echo $$app | tr '[:upper:]' '[:lower:]'):$(IMAGE_TAG); \
 		docker buildx build --quiet --push --file src/InvoiceFlow.$$app/Dockerfile \
@@ -190,10 +213,10 @@ images: doctor ## Build the API and worker images and push them to the cluster r
 		echo "Pushed $$image"; \
 	done
 
-app-up: images ## Build the images and deploy the API and worker
+app-up: images db-migrate ## Build the images, migrate the databases and deploy the API and worker
 	@$(KUBECTL) apply -f deploy/kubernetes/namespace.yaml
 	@for manifest in deploy/kubernetes/app/*.yaml; do \
-		sed 's/$${IMAGE_TAG}/$(IMAGE_TAG)/g' $$manifest; echo ---; \
+		sed -e 's/$${IMAGE_TAG}/$(IMAGE_TAG)/g' -e 's/$${DEVELOPMENT_TENANT_ID}/$(DEVELOPMENT_TENANT_ID)/g' $$manifest; echo ---; \
 	done | $(KUBECTL) apply -f -
 	@$(KUBECTL) rollout status deployment/api --namespace $(APP_NS) --timeout 5m
 	@$(KUBECTL) rollout status deployment/worker --namespace $(APP_NS) --timeout 5m

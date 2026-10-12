@@ -7,6 +7,9 @@ ARG SOURCE_REVISION=unknown
 WORKDIR /src
 
 COPY global.json Directory.Build.props Directory.Packages.props BannedSymbols.txt .editorconfig ./
+COPY src/InvoiceFlow.Domain/InvoiceFlow.Domain.csproj src/InvoiceFlow.Domain/
+COPY src/InvoiceFlow.Application/InvoiceFlow.Application.csproj src/InvoiceFlow.Application/
+COPY src/InvoiceFlow.Infrastructure/InvoiceFlow.Infrastructure.csproj src/InvoiceFlow.Infrastructure/
 COPY src/InvoiceFlow.ServiceDefaults/InvoiceFlow.ServiceDefaults.csproj src/InvoiceFlow.ServiceDefaults/
 COPY src/InvoiceFlow.Api/InvoiceFlow.Api.csproj src/InvoiceFlow.Api/
 RUN dotnet restore src/InvoiceFlow.Api/InvoiceFlow.Api.csproj -a $TARGETARCH

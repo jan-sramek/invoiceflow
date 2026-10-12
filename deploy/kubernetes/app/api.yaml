@@ -22,6 +22,7 @@ spec:
         runAsNonRoot: true
         runAsUser: 1654
         runAsGroup: 1654
+        fsGroup: 1654
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -44,6 +45,16 @@ spec:
               value: http://$(NODE_IP):4317
             - name: OTEL_RESOURCE_ATTRIBUTES
               value: k8s.namespace.name=invoiceflow,k8s.pod.name=$(POD_NAME)
+            - name: CATALOG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: catalog-app
+                  key: password
+            - name: ConnectionStrings__Catalog
+              value: Host=postgres.invoiceflow-infra.svc.cluster.local;Database=invoiceflow_catalog;Username=catalog_app;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
+            # make app-up fills in the id; tenants come from access tokens in Stage 4
+            - name: Tenancy__DevelopmentTenantId
+              value: "${DEVELOPMENT_TENANT_ID}"
           ports:
             - name: http
               containerPort: 8080
@@ -79,9 +90,17 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: tenant-databases
+              mountPath: /var/run/secrets/invoiceflow/tenant-databases
+              readOnly: true
       volumes:
         - name: tmp
           emptyDir: {}
+        # Mounted as files, so a new tenant is picked up without a restart
+        - name: tenant-databases
+          secret:
+            secretName: invoiceflow-tenant-databases
+            defaultMode: 0440
 ---
 apiVersion: v1
 kind: Service

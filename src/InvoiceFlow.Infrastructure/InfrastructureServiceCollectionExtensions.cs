@@ -53,6 +53,9 @@ public static class InfrastructureServiceCollectionExtensions
         return services;
     }
 
+    public static IHealthChecksBuilder AddCatalogCheck(this IHealthChecksBuilder builder, params string[] tags) =>
+        builder.AddCheck<CatalogHealthCheck>("catalog", tags: tags);
+
     private static void AddCatalog(this IServiceCollection services, IConfiguration configuration)
     {
         string connectionString = configuration.GetConnectionString(CatalogConnectionStringName)

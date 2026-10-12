@@ -32,3 +32,5 @@ ensure_secret invoiceflow-infra keycloak-admin password
 # Application credentials live next to the applications that use them
 ensure_secret invoiceflow rabbitmq-api password
 ensure_secret invoiceflow rabbitmq-worker password
+ensure_secret invoiceflow catalog-app password
+ensure_secret invoiceflow catalog-migrator password

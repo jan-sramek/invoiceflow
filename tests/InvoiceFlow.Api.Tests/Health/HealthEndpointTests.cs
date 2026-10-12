@@ -4,18 +4,28 @@ namespace InvoiceFlow.Api.Tests.Health;
 
 public class HealthEndpointTests
 {
-    [Theory]
-    [InlineData("/health/live")]
-    [InlineData("/health/ready")]
-    public async Task Get_HealthyService_ReturnsHealthy(string path)
+    [Fact]
+    public async Task GetLive_CatalogUnreachable_ReturnsHealthy()
     {
         await using ApiFactory api = new();
         using HttpClient client = api.CreateClient();
 
-        HttpResponseMessage response = await client.GetAsync(path, TestContext.Current.CancellationToken);
+        HttpResponseMessage response = await client.GetAsync("/health/live", TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldBe("Healthy");
+    }
+
+    [Fact]
+    public async Task GetReady_CatalogUnreachable_ReturnsUnhealthy()
+    {
+        await using ApiFactory api = new();
+        using HttpClient client = api.CreateClient();
+
+        HttpResponseMessage response = await client.GetAsync("/health/ready", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+        (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldBe("Unhealthy");
     }
 
     [Fact]
