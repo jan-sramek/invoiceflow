@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aspire-dashboard
+  namespace: invoiceflow-observability
+  labels:
+    app.kubernetes.io/name: aspire-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: aspire-dashboard
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: aspire-dashboard
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1654
+        runAsGroup: 1654
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: dashboard
+          image: mcr.microsoft.com/dotnet/aspire-dashboard:13.6.1@sha256:613f297a274958abd85e7b71664f51fb42b0ddeb697ebd4c159677774433345b
+          env:
+            # Only the collector sends telemetry here, from inside the cluster
+            - name: Dashboard__Otlp__AuthMode
+              value: Unsecured
+          ports:
+            - name: http
+              containerPort: 18888
+            - name: otlp-grpc
+              containerPort: 18889
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aspire-dashboard
+  namespace: invoiceflow-observability
+  labels:
+    app.kubernetes.io/name: aspire-dashboard
+spec:
+  selector:
+    app.kubernetes.io/name: aspire-dashboard
+  ports:
+    - name: http
+      port: 18888
+      targetPort: http
+    - name: otlp-grpc
+      port: 18889
+      targetPort: otlp-grpc
+      appProtocol: grpc
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: aspire-dashboard
+  namespace: invoiceflow-observability
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: dashboard.invoiceflow.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: aspire-dashboard
+                port:
+                  name: http
