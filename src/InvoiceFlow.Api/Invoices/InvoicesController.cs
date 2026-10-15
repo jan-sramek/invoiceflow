@@ -6,6 +6,7 @@ using InvoiceFlow.Application.Invoices.Approve;
 using InvoiceFlow.Application.Invoices.Cancel;
 using InvoiceFlow.Application.Invoices.EnterManually;
 using InvoiceFlow.Application.Invoices.GetInvoice;
+using InvoiceFlow.Application.Invoices.ListInvoices;
 using InvoiceFlow.Application.Invoices.MarkPaid;
 using InvoiceFlow.Application.Invoices.Reject;
 using InvoiceFlow.Application.Invoices.Reopen;
@@ -29,6 +30,18 @@ namespace InvoiceFlow.Api.Invoices;
 public sealed class InvoicesController(IQueryHandler<GetInvoiceQuery, Versioned<InvoiceDetailDto>> getInvoice)
     : ControllerBase
 {
+    /// <summary>
+    /// Pages through the tenant's invoices, newest upload first unless <c>sort</c> says otherwise.
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType<PagedList<InvoiceSummaryDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    public Task<PagedList<InvoiceSummaryDto>> List(
+        [FromQuery] InvoiceListRequest request,
+        [FromServices] IQueryHandler<ListInvoicesQuery, PagedList<InvoiceSummaryDto>> handler,
+        CancellationToken cancellationToken) =>
+        handler.HandleAsync(request.ToQuery(), cancellationToken);
+
     [HttpGet("{id:guid}")]
     [ProducesResponseType<InvoiceDetailDto>(StatusCodes.Status200OK)]
     public Task<InvoiceDetailDto> Get(Guid id, CancellationToken cancellationToken) =>

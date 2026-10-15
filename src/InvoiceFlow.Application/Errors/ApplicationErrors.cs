@@ -15,6 +15,15 @@ public static class ApplicationErrors
         /// </summary>
         [Description("Validation failed")]
         public const string Failed = "validation.failed";
+
+        [Description("Value out of range")]
+        public const string OutOfRange = "validation.out_of_range";
+
+        [Description("Range ends before it starts")]
+        public const string RangeReversed = "validation.range_reversed";
+
+        [Description("Value not allowed")]
+        public const string NotAllowed = "validation.not_allowed";
     }
 
     public static class Auth

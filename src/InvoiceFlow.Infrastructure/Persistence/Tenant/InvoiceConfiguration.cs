@@ -40,5 +40,8 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
 
         // Maps to PostgreSQL's xmin system column, which changes on every update.
         builder.Property<uint>(VersionProperty).IsRowVersion();
+
+        // Indexes on the field columns are created in SQL by the AddInvoiceListIndexes migration,
+        // because EF Core cannot index properties of a complex type.
     }
 }

@@ -43,6 +43,9 @@ Codes are `area.reason` in lower snake case. A released code keeps its meaning; 
 | <a id="validation.unknown_property"></a>`validation.unknown_property` | field | The body has a property the endpoint does not know. | | Remove it or fix its spelling. |
 | <a id="validation.required"></a>`validation.required` | 400, field | A value is missing or blank. | `field` | Provide a value. |
 | <a id="validation.max_length"></a>`validation.max_length` | 400 | A value is longer than allowed. | `field`, `max` | Shorten it to `max` characters. |
+| <a id="validation.out_of_range"></a>`validation.out_of_range` | field | A number is outside the allowed range. | `field`, `min`, `max` | Send a value from `min` to `max`. |
+| <a id="validation.range_reversed"></a>`validation.range_reversed` | field | The end of a range is before its start. | `field`, `from` | Swap the values or correct one of them. |
+| <a id="validation.not_allowed"></a>`validation.not_allowed` | field | The value is not one of the allowed values. | `field`, `allowed` | Send one of `allowed`. |
 | <a id="validation.currency_invalid"></a>`validation.currency_invalid` | 400 | The currency is not an ISO 4217 code. | | Use a three-letter code such as `EUR`. |
 | <a id="validation.amount_precision"></a>`validation.amount_precision` | 400 | An amount has too many decimal places. | `maxDecimals` | Round to `maxDecimals` places. |
 | <a id="validation.amount_out_of_range"></a>`validation.amount_out_of_range` | 400 | An amount is larger than `max`, positive or negative. | `max` | Enter a smaller amount. |
