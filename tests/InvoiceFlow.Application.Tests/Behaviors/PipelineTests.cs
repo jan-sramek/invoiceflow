@@ -6,6 +6,7 @@ using InvoiceFlow.Application.Behaviors;
 using InvoiceFlow.Application.Common;
 using InvoiceFlow.Application.Errors;
 using InvoiceFlow.Application.Invoices.GetInvoice;
+using InvoiceFlow.Application.Invoices.ListInvoices;
 using InvoiceFlow.Domain.Common;
 using InvoiceFlow.Domain.Invoices;
 using Microsoft.Extensions.DependencyInjection;
@@ -183,6 +184,10 @@ public class PipelineTests
     {
         public Task<Versioned<InvoiceDetailDto>?> GetDetailAsync(InvoiceId id, CancellationToken cancellationToken) =>
             Task.FromResult<Versioned<InvoiceDetailDto>?>(null);
+
+        public Task<PagedList<InvoiceSummaryDto>> ListAsync(
+            ListInvoicesQuery query, InvoiceSort sort, DateOnly today, CancellationToken cancellationToken) =>
+            Task.FromResult(new PagedList<InvoiceSummaryDto>([], query.Page, query.PageSize, 0));
 
         public Task<Invoice?> GetAsync(InvoiceId id, CancellationToken cancellationToken) =>
             Task.FromResult<Invoice?>(null);

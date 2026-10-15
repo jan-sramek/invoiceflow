@@ -2,6 +2,7 @@ using InvoiceFlow.Application.Abstractions.Persistence;
 using InvoiceFlow.Application.Common;
 using InvoiceFlow.Application.Errors;
 using InvoiceFlow.Application.Invoices.GetInvoice;
+using InvoiceFlow.Application.Invoices.ListInvoices;
 using InvoiceFlow.Domain.Common;
 using InvoiceFlow.Domain.Invoices;
 
@@ -45,5 +46,9 @@ public class GetInvoiceHandlerTests
     {
         public Task<Versioned<InvoiceDetailDto>?> GetDetailAsync(InvoiceId id, CancellationToken cancellationToken) =>
             Task.FromResult(id.Value == invoice.Value.Id ? invoice : null);
+
+        public Task<PagedList<InvoiceSummaryDto>> ListAsync(
+            ListInvoicesQuery query, InvoiceSort sort, DateOnly today, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
     }
 }

@@ -43,6 +43,8 @@ internal sealed class TenantDbContext(DbContextOptions<TenantDbContext> options,
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Trigram indexes for searching with ILIKE '%term%'
+        modelBuilder.HasPostgresExtension("pg_trgm");
         modelBuilder.ApplyConfiguration(new InvoiceConfiguration());
         modelBuilder.ApplyConfiguration(new AuditEntryConfiguration());
 
