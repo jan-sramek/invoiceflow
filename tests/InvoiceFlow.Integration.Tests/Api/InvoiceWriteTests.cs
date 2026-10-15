@@ -1,17 +1,13 @@
 using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text.Json;
-using InvoiceFlow.Application.Abstractions.Persistence;
 using InvoiceFlow.Domain.Common;
 using InvoiceFlow.Domain.Invoices;
-using InvoiceFlow.Domain.Tenants;
 using InvoiceFlow.Integration.Tests.Persistence;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace InvoiceFlow.Integration.Tests.Api;
 
-public sealed class InvoiceWriteTests(PostgresFixture database) : IAsyncLifetime
+public sealed class InvoiceWriteTests(PostgresFixture database) : InvoiceApiTests(database)
 {
     private static readonly DateTimeOffset Start = new(2026, 10, 1, 9, 0, 0, TimeSpan.Zero);
     private static readonly Actor Uploader = Actor.User("clerk-1", "Clara Clerk");
@@ -28,25 +24,6 @@ public sealed class InvoiceWriteTests(PostgresFixture database) : IAsyncLifetime
         totalAmount = 1210.00m,
         purchaseOrderReference = (string?)null,
     };
-
-    private TestTenant _tenant = null!;
-    private TenantApi _api = null!;
-    private HttpClient _client = null!;
-
-    private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
-
-    public async ValueTask InitializeAsync()
-    {
-        _tenant = await database.CreateTenantAsync();
-        _api = new TenantApi(database, _tenant.Id);
-        _client = _api.CreateClient();
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        _client.Dispose();
-        await _api.DisposeAsync();
-    }
 
     [Fact]
     [Trait("Requirement", "FR-EXT-04")]
@@ -157,9 +134,8 @@ public sealed class InvoiceWriteTests(PostgresFixture database) : IAsyncLifetime
     public async Task Write_WithoutIfMatch_ReturnsPreconditionRequired()
     {
         (InvoiceId id, _) = await SeedAsync(Invoice.Upload(Uploader, Start));
-        using HttpRequestMessage request = Request(HttpMethod.Post, $"/api/v1/invoices/{id}/enter-manually", etag: null);
 
-        HttpResponseMessage response = await _client.SendAsync(request, CancellationToken);
+        HttpResponseMessage response = await PostAsync(id, "enter-manually", etag: null);
         JsonElement problem = await JsonAsync(response);
 
         response.StatusCode.ShouldBe((HttpStatusCode)428);
@@ -202,9 +178,8 @@ public sealed class InvoiceWriteTests(PostgresFixture database) : IAsyncLifetime
     public async Task Write_WithoutUser_ReturnsUserRequired()
     {
         (InvoiceId id, EntityTagHeaderValue etag) = await SeedAsync(Invoice.Upload(Uploader, Start));
-        using HttpRequestMessage request = Request(HttpMethod.Post, $"/api/v1/invoices/{id}/enter-manually", etag, persona: null);
 
-        HttpResponseMessage response = await _client.SendAsync(request, CancellationToken);
+        HttpResponseMessage response = await PostAsync(id, "enter-manually", etag, persona: null);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         (await JsonAsync(response)).GetProperty("code").GetString().ShouldBe("auth.user_required");
@@ -215,7 +190,7 @@ public sealed class InvoiceWriteTests(PostgresFixture database) : IAsyncLifetime
     [Trait("Requirement", "NFR-SEC-03")]
     public async Task Write_InvoiceOfAnotherTenant_ReturnsNotFound()
     {
-        TestTenant other = await database.CreateTenantAsync();
+        TestTenant other = await Database.CreateTenantAsync();
         var foreign = Invoice.Upload(Uploader, Start);
         await AddAsync(other.Id, foreign);
 
@@ -232,55 +207,6 @@ public sealed class InvoiceWriteTests(PostgresFixture database) : IAsyncLifetime
         return await SeedAsync(invoice);
     }
 
-    private async Task<(InvoiceId Id, EntityTagHeaderValue ETag)> SeedAsync(Invoice invoice)
-    {
-        await AddAsync(_tenant.Id, invoice);
-        return (invoice.Id, (await GetAsync(invoice.Id)).Headers.ETag.ShouldNotBeNull());
-    }
-
-    private async Task AddAsync(TenantId tenant, Invoice invoice)
-    {
-        await using AsyncServiceScope scope = database.OpenScope(tenant);
-        scope.ServiceProvider.GetRequiredService<IInvoiceRepository>().Add(invoice);
-        await scope.ServiceProvider.GetRequiredService<IUnitOfWork>().CommitAsync(CancellationToken);
-    }
-
-    private Task<HttpResponseMessage> GetAsync(InvoiceId id) =>
-        _client.GetAsync($"/api/v1/invoices/{id}", CancellationToken);
-
-    private async Task<HttpResponseMessage> UpdateFieldsAsync(InvoiceId id, EntityTagHeaderValue etag, object fields)
-    {
-        using HttpRequestMessage request = Request(HttpMethod.Put, $"/api/v1/invoices/{id}/fields", etag);
-        request.Content = JsonContent.Create(fields);
-        return await _client.SendAsync(request, CancellationToken);
-    }
-
-    private async Task<HttpResponseMessage> PostAsync(InvoiceId id, string action, EntityTagHeaderValue etag)
-    {
-        using HttpRequestMessage request = Request(HttpMethod.Post, $"/api/v1/invoices/{id}/{action}", etag);
-        return await _client.SendAsync(request, CancellationToken);
-    }
-
-    private static HttpRequestMessage Request(
-        HttpMethod method, string path, EntityTagHeaderValue? etag, string? persona = "clerk")
-    {
-        var request = new HttpRequestMessage(method, path);
-        if (etag is not null)
-        {
-            request.Headers.IfMatch.Add(etag);
-        }
-
-        if (persona is not null)
-        {
-            request.Headers.Add("X-Development-User", persona);
-        }
-
-        return request;
-    }
-
-    private static async Task<JsonElement> JsonAsync(HttpResponseMessage response)
-    {
-        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(CancellationToken));
-        return document.RootElement.Clone();
-    }
+    private Task<HttpResponseMessage> UpdateFieldsAsync(InvoiceId id, EntityTagHeaderValue etag, object fields) =>
+        SendAsync(HttpMethod.Put, $"/api/v1/invoices/{id}/fields", etag, fields);
 }
