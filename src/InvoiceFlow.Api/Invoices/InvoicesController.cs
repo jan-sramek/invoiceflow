@@ -1,8 +1,14 @@
 using InvoiceFlow.Api.Http;
 using InvoiceFlow.Application.Abstractions.Messaging;
 using InvoiceFlow.Application.Common;
+using InvoiceFlow.Application.Invoices;
+using InvoiceFlow.Application.Invoices.Approve;
+using InvoiceFlow.Application.Invoices.Cancel;
 using InvoiceFlow.Application.Invoices.EnterManually;
 using InvoiceFlow.Application.Invoices.GetInvoice;
+using InvoiceFlow.Application.Invoices.MarkPaid;
+using InvoiceFlow.Application.Invoices.Reject;
+using InvoiceFlow.Application.Invoices.Reopen;
 using InvoiceFlow.Application.Invoices.Submit;
 using InvoiceFlow.Application.Invoices.UpdateFields;
 using InvoiceFlow.Domain.Invoices;
@@ -38,18 +44,16 @@ public sealed class InvoicesController(IQueryHandler<GetInvoiceQuery, Versioned<
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status412PreconditionFailed, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status428PreconditionRequired, "application/problem+json")]
-    public async Task<InvoiceDetailDto> UpdateFields(
+    public Task<InvoiceDetailDto> UpdateFields(
         Guid id,
         [FromHeader(Name = "If-Match")] string? ifMatch,
         InvoiceFieldsInput fields,
         [FromServices] ICommandHandler<UpdateInvoiceFieldsCommand, InvoiceId> handler,
-        CancellationToken cancellationToken)
-    {
-        InvoiceId invoiceId = await handler.HandleAsync(
+        CancellationToken cancellationToken) =>
+        ChangeAsync(
+            handler,
             new UpdateInvoiceFieldsCommand(new InvoiceId(id), EntityTags.RequiredVersion(ifMatch), fields),
             cancellationToken);
-        return await DetailAsync(invoiceId, cancellationToken);
-    }
 
     [HttpPost("{id:guid}/enter-manually")]
     [Authorize]
@@ -57,17 +61,15 @@ public sealed class InvoicesController(IQueryHandler<GetInvoiceQuery, Versioned<
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status412PreconditionFailed, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status428PreconditionRequired, "application/problem+json")]
-    public async Task<InvoiceDetailDto> EnterManually(
+    public Task<InvoiceDetailDto> EnterManually(
         Guid id,
         [FromHeader(Name = "If-Match")] string? ifMatch,
         [FromServices] ICommandHandler<EnterInvoiceManuallyCommand, InvoiceId> handler,
-        CancellationToken cancellationToken)
-    {
-        InvoiceId invoiceId = await handler.HandleAsync(
+        CancellationToken cancellationToken) =>
+        ChangeAsync(
+            handler,
             new EnterInvoiceManuallyCommand(new InvoiceId(id), EntityTags.RequiredVersion(ifMatch)),
             cancellationToken);
-        return await DetailAsync(invoiceId, cancellationToken);
-    }
 
     /// <summary>
     /// Sends the invoice for approval; a 422 lists the fields that still block it.
@@ -79,16 +81,127 @@ public sealed class InvoicesController(IQueryHandler<GetInvoiceQuery, Versioned<
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status412PreconditionFailed, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status428PreconditionRequired, "application/problem+json")]
-    public async Task<InvoiceDetailDto> Submit(
+    public Task<InvoiceDetailDto> Submit(
         Guid id,
         [FromHeader(Name = "If-Match")] string? ifMatch,
         [FromServices] ICommandHandler<SubmitInvoiceCommand, InvoiceId> handler,
-        CancellationToken cancellationToken)
-    {
-        InvoiceId invoiceId = await handler.HandleAsync(
+        CancellationToken cancellationToken) =>
+        ChangeAsync(
+            handler,
             new SubmitInvoiceCommand(new InvoiceId(id), EntityTags.RequiredVersion(ifMatch)),
             cancellationToken);
-        return await DetailAsync(invoiceId, cancellationToken);
+
+    /// <summary>
+    /// Approves the invoice; a 403 means the caller submitted it.
+    /// </summary>
+    [HttpPost("{id:guid}/approve")]
+    [Authorize]
+    [ProducesResponseType<InvoiceDetailDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status412PreconditionFailed, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status428PreconditionRequired, "application/problem+json")]
+    public Task<InvoiceDetailDto> Approve(
+        Guid id,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        [FromServices] ICommandHandler<ApproveInvoiceCommand, InvoiceId> handler,
+        CancellationToken cancellationToken) =>
+        ChangeAsync(
+            handler,
+            new ApproveInvoiceCommand(new InvoiceId(id), EntityTags.RequiredVersion(ifMatch)),
+            cancellationToken);
+
+    /// <summary>
+    /// Rejects the invoice with a reason; a 403 means the caller submitted it.
+    /// </summary>
+    [HttpPost("{id:guid}/reject")]
+    [Authorize]
+    [ProducesResponseType<InvoiceDetailDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status412PreconditionFailed, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status428PreconditionRequired, "application/problem+json")]
+    public Task<InvoiceDetailDto> Reject(
+        Guid id,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        ReasonRequest request,
+        [FromServices] ICommandHandler<RejectInvoiceCommand, InvoiceId> handler,
+        CancellationToken cancellationToken) =>
+        ChangeAsync(
+            handler,
+            new RejectInvoiceCommand(new InvoiceId(id), EntityTags.RequiredVersion(ifMatch), request.Reason),
+            cancellationToken);
+
+    /// <summary>
+    /// Returns a rejected invoice to review so its fields can be corrected.
+    /// </summary>
+    [HttpPost("{id:guid}/reopen")]
+    [Authorize]
+    [ProducesResponseType<InvoiceDetailDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status412PreconditionFailed, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status428PreconditionRequired, "application/problem+json")]
+    public Task<InvoiceDetailDto> Reopen(
+        Guid id,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        [FromServices] ICommandHandler<ReopenInvoiceCommand, InvoiceId> handler,
+        CancellationToken cancellationToken) =>
+        ChangeAsync(
+            handler,
+            new ReopenInvoiceCommand(new InvoiceId(id), EntityTags.RequiredVersion(ifMatch)),
+            cancellationToken);
+
+    /// <summary>
+    /// Records that an approved invoice was paid in full.
+    /// </summary>
+    [HttpPost("{id:guid}/mark-paid")]
+    [Authorize]
+    [ProducesResponseType<InvoiceDetailDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status412PreconditionFailed, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status428PreconditionRequired, "application/problem+json")]
+    public Task<InvoiceDetailDto> MarkPaid(
+        Guid id,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        PaymentRequest request,
+        [FromServices] ICommandHandler<MarkInvoicePaidCommand, InvoiceId> handler,
+        CancellationToken cancellationToken) =>
+        ChangeAsync(
+            handler,
+            new MarkInvoicePaidCommand(
+                new InvoiceId(id), EntityTags.RequiredVersion(ifMatch), request.PaidOn, request.PaymentReference),
+            cancellationToken);
+
+    /// <summary>
+    /// Cancels an invoice that is not approved yet; it stays in the history and is never deleted.
+    /// </summary>
+    [HttpPost("{id:guid}/cancel")]
+    [Authorize]
+    [ProducesResponseType<InvoiceDetailDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status412PreconditionFailed, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status428PreconditionRequired, "application/problem+json")]
+    public Task<InvoiceDetailDto> Cancel(
+        Guid id,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        ReasonRequest request,
+        [FromServices] ICommandHandler<CancelInvoiceCommand, InvoiceId> handler,
+        CancellationToken cancellationToken) =>
+        ChangeAsync(
+            handler,
+            new CancelInvoiceCommand(new InvoiceId(id), EntityTags.RequiredVersion(ifMatch), request.Reason),
+            cancellationToken);
+
+    private async Task<InvoiceDetailDto> ChangeAsync<TCommand>(
+        ICommandHandler<TCommand, InvoiceId> handler, TCommand command, CancellationToken cancellationToken)
+        where TCommand : IInvoiceCommand
+    {
+        InvoiceId id = await handler.HandleAsync(command, cancellationToken);
+        return await DetailAsync(id, cancellationToken);
     }
 
     private async Task<InvoiceDetailDto> DetailAsync(InvoiceId id, CancellationToken cancellationToken)

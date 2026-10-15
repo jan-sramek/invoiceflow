@@ -1,17 +1,16 @@
 using InvoiceFlow.Application.Abstractions.Context;
-using InvoiceFlow.Application.Abstractions.Messaging;
 using InvoiceFlow.Application.Abstractions.Persistence;
 using InvoiceFlow.Application.Errors;
+using InvoiceFlow.Domain.Common;
 using InvoiceFlow.Domain.Invoices;
 
 namespace InvoiceFlow.Application.Invoices.UpdateFields;
 
-internal sealed class UpdateInvoiceFieldsHandler(
-    IInvoiceRepository invoices,
-    ICurrentUser user,
-    TimeProvider time) : ICommandHandler<UpdateInvoiceFieldsCommand, InvoiceId>
+internal sealed class UpdateInvoiceFieldsHandler(IInvoiceRepository invoices, ICurrentUser user, TimeProvider time)
+    : InvoiceCommandHandler<UpdateInvoiceFieldsCommand>(invoices, user, time)
 {
-    public async Task<InvoiceId> HandleAsync(UpdateInvoiceFieldsCommand command, CancellationToken cancellationToken)
+    protected override void Apply(
+        Invoice invoice, UpdateInvoiceFieldsCommand command, Actor actor, DateTimeOffset now)
     {
         InvoiceFields fields = command.Fields.ToFields(out IReadOnlyList<RequestFieldError> errors);
         if (errors.Count > 0)
@@ -19,10 +18,6 @@ internal sealed class UpdateInvoiceFieldsHandler(
             throw new RequestValidationException(errors);
         }
 
-        Invoice invoice = await invoices.GetAsync(command.Id, command.ExpectedVersion, cancellationToken)
-            ?? throw new InvoiceNotFoundException();
-        invoice.UpdateFields(user.Actor, time.GetUtcNow(), fields);
-
-        return invoice.Id;
+        invoice.UpdateFields(actor, now, fields);
     }
 }
