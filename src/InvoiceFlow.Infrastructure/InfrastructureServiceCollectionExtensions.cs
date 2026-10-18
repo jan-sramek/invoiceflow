@@ -26,6 +26,7 @@ public static class InfrastructureServiceCollectionExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
         services.AddMemoryCache();
+        services.TryAddSingleton(TimeProvider.System);
 
         services.AddScoped<ITenantContext, DevelopmentTenantContext>();
         services.AddSingleton<TenantConnectionResolver>();
