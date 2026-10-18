@@ -1,0 +1,135 @@
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--if-space-3);
+  margin-bottom: var(--if-space-4);
+
+  h1 {
+    margin: 0;
+  }
+}
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--if-space-3);
+  padding: var(--if-space-6) var(--if-space-4);
+  border: 2px dashed var(--if-border-strong);
+  text-align: center;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+
+  &.dragging {
+    border-color: var(--if-brand);
+    background: var(--if-drop-bg);
+  }
+
+  .big {
+    width: 48px;
+    height: 48px;
+    font-size: 48px;
+    color: var(--if-brand);
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .lead {
+    font-size: 16px;
+    font-weight: 500;
+  }
+}
+
+.muted {
+  color: var(--if-text-muted);
+  font-size: 13px;
+}
+
+.queue {
+  margin-top: var(--if-space-4);
+  padding: var(--if-space-4) var(--if-space-5);
+}
+
+.queue-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--if-space-3);
+  margin-bottom: var(--if-space-2);
+
+  h2 {
+    margin: 0;
+  }
+
+  .spacer {
+    flex: 1;
+  }
+}
+
+.items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--if-space-3);
+  padding: var(--if-space-3) 0;
+  border-top: 1px solid var(--if-border);
+
+  &:first-child {
+    border-top: 0;
+  }
+
+  .state-icon {
+    margin-top: 2px;
+    color: var(--if-text-muted);
+  }
+
+  &[data-state='done'] .state-icon {
+    color: var(--if-status-ok-fg);
+  }
+
+  &[data-state='failed'] .state-icon {
+    color: var(--if-status-danger-fg);
+  }
+
+  .info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .name {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  .error {
+    color: var(--if-status-danger-fg);
+  }
+
+  .trace {
+    display: block;
+    font-size: 12px;
+  }
+
+  .result {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .row-actions {
+    display: flex;
+  }
+}

@@ -1,0 +1,159 @@
+@use '@angular/material' as mat;
+
+// Angular Material M3 theme: azure primary, blue tertiary. Component-level look is tuned with the --if-* tokens below.
+html {
+  @include mat.theme(
+    (
+      color: (
+        theme-type: light,
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: (
+        plain-family: ('Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif),
+        brand-family: ('Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif),
+        bold-weight: 700,
+        medium-weight: 600,
+        regular-weight: 400,
+      ),
+      density: 0,
+    )
+  );
+}
+
+// Design tokens: a clean blue-slate palette for a work tool. Use these in components, not raw colours.
+:root {
+  --if-bg: #f3f6fa;
+  --if-surface: #ffffff;
+  --if-border: #dbe3ec;
+  --if-border-strong: #b9c6d6;
+  --if-text: #14243a;
+  --if-text-muted: #55677d;
+  --if-brand: #0b5cad;
+  --if-row-hover: #f1f6fc;
+  --if-drop-bg: #eaf3ff;
+  --if-focus-ring: #8dbbff;
+
+  --if-header-bg: #0f2742;
+  --if-header-text: #ffffff;
+  --if-header-text-muted: #b6c6da;
+  --if-header-border: rgb(255 255 255 / 0.28);
+  --if-header-active-bg: rgb(255 255 255 / 0.12);
+
+  --if-radius: 10px;
+  --if-radius-sm: 6px;
+  --if-content-max: 1280px;
+
+  --if-space-1: 4px;
+  --if-space-2: 8px;
+  --if-space-3: 12px;
+  --if-space-4: 16px;
+  --if-space-5: 24px;
+  --if-space-6: 32px;
+  --if-space-7: 48px;
+
+  // Status colours come in background/foreground pairs that keep a readable contrast.
+  --if-status-neutral-bg: #e8edf3;
+  --if-status-neutral-fg: #3d4f65;
+  --if-status-progress-bg: #e3effd;
+  --if-status-progress-fg: #134a8e;
+  --if-status-info-bg: #dff1fb;
+  --if-status-info-fg: #0b4a6f;
+  --if-status-warn-bg: #fff1d6;
+  --if-status-warn-fg: #7a4a00;
+  --if-status-warn-border: #f0cf86;
+  --if-status-danger-bg: #fde7e7;
+  --if-status-danger-fg: #9b1c1c;
+  --if-status-pending-bg: #dcf2f0;
+  --if-status-pending-fg: #0d5c57;
+  --if-status-ok-bg: #e1f5e6;
+  --if-status-ok-fg: #17622d;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--if-bg);
+  color: var(--if-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+h1 {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+a {
+  color: var(--if-brand);
+}
+
+code {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.92em;
+}
+
+.card {
+  background: var(--if-surface);
+  border: 1px solid var(--if-border);
+  border-radius: var(--if-radius);
+  box-shadow: 0 1px 2px rgb(15 39 66 / 0.04);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+:focus-visible {
+  outline-color: var(--if-brand);
+}
+
+// Tables and cards sit on white regardless of the theme's tinted surface.
+.mat-mdc-table,
+.mat-mdc-paginator {
+  --mat-table-background-color: var(--if-surface);
+  --mat-paginator-container-background-color: var(--if-surface);
+}
+
+.mat-mdc-header-cell {
+  color: var(--if-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+// Error toast: dark red so it reads as a failure, with light text.
+.if-error-snackbar {
+  --mat-snack-bar-container-color: #5c1a1a;
+  --mat-snack-bar-supporting-text-color: #ffffff;
+  --mat-snack-bar-button-color: #ffd7d7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

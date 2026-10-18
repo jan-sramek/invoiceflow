@@ -1,0 +1,236 @@
+<section class="page">
+  <header class="page-head">
+    <h1>{{ 'invoices.list.title' | transloco }}</h1>
+    <a matButton="filled" routerLink="/invoices/upload">
+      <mat-icon>upload_file</mat-icon>
+      {{ 'invoices.list.upload' | transloco }}
+    </a>
+  </header>
+
+  <form class="card filters" [formGroup]="form" role="search" (submit)="$event.preventDefault()">
+    <div class="filter-row">
+      <mat-form-field appearance="outline" class="search" subscriptSizing="dynamic">
+        <mat-label>{{ 'invoices.list.search.label' | transloco }}</mat-label>
+        <mat-icon matPrefix>search</mat-icon>
+        <input
+          matInput
+          type="search"
+          formControlName="search"
+          maxlength="200"
+          [placeholder]="'invoices.list.search.placeholder' | transloco"
+        />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="status" subscriptSizing="dynamic">
+        <mat-label>{{ 'invoices.list.filters.status' | transloco }}</mat-label>
+        <mat-select formControlName="status" multiple>
+          @for (status of statuses; track status) {
+            <mat-option [value]="status">{{ 'invoices.status.' + status | transloco }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-slide-toggle formControlName="overdue">
+        {{ 'invoices.list.filters.overdue' | transloco }}
+      </mat-slide-toggle>
+
+      <span class="spacer"></span>
+
+      <button
+        matButton
+        type="button"
+        (click)="showMore.set(!showMore())"
+        [attr.aria-expanded]="showMore()"
+        aria-controls="more-filters"
+      >
+        <mat-icon>{{ showMore() ? 'expand_less' : 'tune' }}</mat-icon>
+        {{ 'invoices.list.filters.more' | transloco }}
+        @if (filterCount() > 0) {
+          <span class="count">{{ filterCount() }}</span>
+        }
+      </button>
+      <button matButton type="button" [disabled]="!hasCriteria()" (click)="clear()">
+        {{ 'invoices.list.filters.clear' | transloco }}
+      </button>
+    </div>
+
+    @if (showMore()) {
+      <div class="filter-row more" id="more-filters">
+        <fieldset>
+          <legend>{{ 'invoices.fields.invoiceDate' | transloco }}</legend>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ 'invoices.list.filters.from' | transloco }}</mat-label>
+            <input matInput type="date" formControlName="invoiceDateFrom" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ 'invoices.list.filters.to' | transloco }}</mat-label>
+            <input matInput type="date" formControlName="invoiceDateTo" />
+          </mat-form-field>
+        </fieldset>
+
+        <fieldset>
+          <legend>{{ 'invoices.fields.dueDate' | transloco }}</legend>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ 'invoices.list.filters.from' | transloco }}</mat-label>
+            <input matInput type="date" formControlName="dueDateFrom" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ 'invoices.list.filters.to' | transloco }}</mat-label>
+            <input matInput type="date" formControlName="dueDateTo" />
+          </mat-form-field>
+        </fieldset>
+
+        <fieldset>
+          <legend>{{ 'invoices.fields.totalAmount' | transloco }}</legend>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="narrow">
+            <mat-label>{{ 'invoices.list.filters.from' | transloco }}</mat-label>
+            <input matInput type="number" min="0" step="0.01" formControlName="totalAmountFrom" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="narrow">
+            <mat-label>{{ 'invoices.list.filters.to' | transloco }}</mat-label>
+            <input matInput type="number" min="0" step="0.01" formControlName="totalAmountTo" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="currency">
+            <mat-label>{{ 'invoices.fields.currency' | transloco }}</mat-label>
+            <input matInput formControlName="currency" maxlength="3" placeholder="EUR" />
+          </mat-form-field>
+        </fieldset>
+
+        <fieldset>
+          <legend>{{ 'invoices.list.filters.duplicates' | transloco }}</legend>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ 'invoices.list.filters.duplicateStatus' | transloco }}</mat-label>
+            <mat-select formControlName="duplicateStatus">
+              <mat-option value="">{{ 'invoices.list.filters.any' | transloco }}</mat-option>
+              @for (status of duplicateStatuses; track status) {
+                <mat-option [value]="status">{{ 'invoices.duplicate.' + status | transloco }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </fieldset>
+      </div>
+    }
+  </form>
+
+  <div class="card results" [attr.aria-busy]="store.loading()">
+    @if (store.loading()) {
+      <mat-progress-bar mode="indeterminate" class="progress" />
+    }
+
+    @if (store.error(); as error) {
+      <div class="notice error" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <div class="body">
+          <strong>{{ 'invoices.list.loadFailed' | transloco }}</strong>
+          <span>{{ errorText() }}</span>
+          @if (error.traceId) {
+            <span class="trace">{{ 'errors.traceId' | transloco }}: <code>{{ error.traceId }}</code></span>
+          }
+        </div>
+        <button matButton type="button" (click)="store.reload()">{{ 'app.common.retry' | transloco }}</button>
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table
+          mat-table
+          matSort
+          matSortDisableClear
+          [dataSource]="store.items()"
+          [matSortActive]="sort().active"
+          [matSortDirection]="sort().direction"
+          (matSortChange)="onSort($event)"
+          [class.stale]="store.loading()"
+        >
+          <ng-container matColumnDef="supplier">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header="supplierName">
+              {{ 'invoices.list.columns.supplier' | transloco }}
+            </th>
+            <td mat-cell *matCellDef="let row">
+              <a class="supplier" [routerLink]="['/invoices', row.id]" (click)="$event.stopPropagation()">
+                @if (row.supplierName) {
+                  {{ row.supplierName }}
+                } @else {
+                  <em>{{ 'invoices.list.noSupplier' | transloco }}</em>
+                }
+              </a>
+              @if (row.invoiceNumber) {
+                <div class="sub">{{ row.invoiceNumber }}</div>
+              }
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header="status">
+              {{ 'invoices.list.columns.status' | transloco }}
+            </th>
+            <td mat-cell *matCellDef="let row">
+              <div class="status-cell">
+                <if-invoice-status-chip [status]="row.status" />
+                <if-invoice-flags [overdue]="row.isOverdue" [duplicate]="row.duplicateStatus" />
+              </div>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="invoiceDate">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header="invoiceDate">
+              {{ 'invoices.list.columns.invoiceDate' | transloco }}
+            </th>
+            <td mat-cell *matCellDef="let row">{{ row.invoiceDate | ifDate: language.locale() }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="dueDate">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header="dueDate">
+              {{ 'invoices.list.columns.dueDate' | transloco }}
+            </th>
+            <td mat-cell *matCellDef="let row" [class.overdue]="row.isOverdue">
+              {{ row.dueDate | ifDate: language.locale() }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="total">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header="totalAmount" class="num">
+              {{ 'invoices.list.columns.total' | transloco }}
+            </th>
+            <td mat-cell *matCellDef="let row" class="num">
+              {{ row.totalAmount | ifMoney: row.currency : language.locale() }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="uploadedAt">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header="uploadedAt">
+              {{ 'invoices.list.columns.uploadedAt' | transloco }}
+            </th>
+            <td mat-cell *matCellDef="let row">{{ row.uploadedAt | ifDate: language.locale() }}</td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="columns"></tr>
+          <tr mat-row *matRowDef="let row; columns: columns" class="row" (click)="open(row.id)"></tr>
+        </table>
+
+        @if (!store.loading() && store.items().length === 0) {
+          <div class="empty">
+            <mat-icon>inbox</mat-icon>
+            @if (hasCriteria()) {
+              <strong>{{ 'invoices.list.empty.filteredTitle' | transloco }}</strong>
+              <span>{{ 'invoices.list.empty.filteredHint' | transloco }}</span>
+              <button matButton type="button" (click)="clear()">{{ 'invoices.list.filters.clear' | transloco }}</button>
+            } @else {
+              <strong>{{ 'invoices.list.empty.title' | transloco }}</strong>
+              <span>{{ 'invoices.list.empty.hint' | transloco }}</span>
+              <a matButton="tonal" routerLink="/invoices/upload">{{ 'invoices.list.upload' | transloco }}</a>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <mat-paginator
+      [length]="store.totalCount()"
+      [pageIndex]="store.query().page - 1"
+      [pageSize]="store.query().pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      showFirstLastButtons
+      (page)="onPage($event)"
+    />
+  </div>
+</section>

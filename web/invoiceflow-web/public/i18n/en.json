@@ -1,0 +1,307 @@
+{
+  "app": {
+    "name": "InvoiceFlow",
+    "skipToContent": "Skip to content",
+    "nav": {
+      "label": "Main navigation",
+      "invoices": "Invoices",
+      "upload": "Upload"
+    },
+    "devUser": {
+      "label": "Acting as",
+      "hint": "Development sign-in: sent as the X-Development-User header",
+      "clerk": "Clara Clerk",
+      "approver": "Adam Approver",
+      "finance": "Fiona Finance"
+    },
+    "language": {
+      "label": "Language",
+      "en": "English",
+      "cs": "Čeština"
+    },
+    "common": {
+      "cancel": "Cancel",
+      "close": "Close",
+      "loading": "Loading…",
+      "retry": "Try again",
+      "save": "Save"
+    },
+    "paginator": {
+      "itemsPerPage": "Rows per page",
+      "next": "Next page",
+      "previous": "Previous page",
+      "first": "First page",
+      "last": "Last page",
+      "range": "{{ start }}–{{ end }} of {{ total }}"
+    },
+    "notFound": {
+      "title": "Page not found",
+      "hint": "The page you are looking for does not exist or has moved.",
+      "action": "Go to invoices"
+    }
+  },
+  "errors": {
+    "traceId": "Trace ID",
+    "copyTraceId": "Copy trace ID",
+    "traceCopied": "Copied",
+    "stale": {
+      "title": "The invoice has changed",
+      "message": "Someone else changed this invoice after you opened it. Reload to see the current version; your unsaved edits will be lost.",
+      "reload": "Reload invoice",
+      "keep": "Keep editing"
+    },
+    "client": {
+      "network": "The server cannot be reached. Check your connection and try again.",
+      "timeout": "The server took too long to answer. Try again.",
+      "canceled": "The request was cancelled.",
+      "unknown": "Something went wrong. Try again, and report it with the trace ID if it keeps happening."
+    },
+    "http": {
+      "401": "You are not signed in.",
+      "403": "You are not allowed to do this.",
+      "404": "That could not be found.",
+      "502": "The service is temporarily unavailable. Try again in a moment.",
+      "503": "The service is temporarily unavailable. Try again in a moment.",
+      "504": "The service took too long to answer. Try again in a moment.",
+      "4xx": "The request was refused. Check your input and try again.",
+      "5xx": "The server had a problem. Try again, and report it with the trace ID if it keeps happening."
+    },
+    "request": {
+      "malformed": "The request could not be read.",
+      "invalid": "The request was refused.",
+      "not_found": "That could not be found.",
+      "method_not_allowed": "That action is not available.",
+      "unsupported_media_type": "The request format is not supported."
+    },
+    "validation": {
+      "failed": "Some values are invalid. Fix the marked fields and try again.",
+      "invalid_format": "This value has the wrong format.",
+      "unknown_property": "This field is not recognised.",
+      "required": "This field is required.",
+      "max_length": "Use at most {{ max }} characters.",
+      "out_of_range": "Enter a value between {{ min }} and {{ max }}.",
+      "range_reversed": "This must not be before {{ from }}.",
+      "not_allowed": "Choose one of: {{ allowed }}.",
+      "currency_invalid": "Use a three-letter currency code such as EUR.",
+      "amount_precision": "Use at most {{ maxDecimals }} decimal places.",
+      "amount_out_of_range": "The amount is too large; the maximum is {{ max }}.",
+      "must_be_positive": "Enter an amount greater than zero.",
+      "total_mismatch": "The total must equal the net amount plus VAT.",
+      "date_in_future": "The date cannot be in the future.",
+      "due_date_before_invoice_date": "The due date cannot be before the invoice date."
+    },
+    "invoice": {
+      "not_found": "This invoice does not exist or you have no access to it.",
+      "invalid_transition": "This invoice is {{ from }}, so “{{ action }}” is not possible. Reload and choose an available action.",
+      "not_ready_for_submission": "Complete the marked fields before submitting.",
+      "payment_date_in_future": "Enter the date the payment was actually made.",
+      "unresolved_duplicate": "This invoice may be a duplicate. Confirm it is not, or cancel it."
+    },
+    "approval": {
+      "own_invoice": "You cannot approve or reject an invoice you submitted. Ask another approver."
+    },
+    "upload": {
+      "too_large": "The file is larger than the maximum of {{ maxSize }}.",
+      "not_pdf": "Only PDF files are accepted."
+    },
+    "idempotency": {
+      "key_required": "The upload could not be identified. Try again.",
+      "in_progress": "This upload is still being processed. Try again in a moment.",
+      "key_reused": "This upload could not be matched to its file. Try again."
+    },
+    "auth": {
+      "user_required": "You are not signed in. Choose a user in the header."
+    },
+    "concurrency": {
+      "if_match_required": "The invoice version is missing. Reload and try again.",
+      "stale_version": "Someone changed this invoice after you opened it. Reload and try again."
+    },
+    "tenant": {
+      "unavailable": "Your organisation's data is temporarily unavailable. Try again shortly."
+    },
+    "storage": {
+      "unavailable": "Document storage is temporarily unavailable. Try again shortly."
+    },
+    "server": {
+      "unexpected": "An unexpected error occurred. Report it with the trace ID."
+    }
+  },
+  "invoices": {
+    "status": {
+      "Uploaded": "Uploaded",
+      "Processing": "Processing",
+      "Extracted": "Extracted",
+      "NeedsReview": "Needs review",
+      "ExtractionFailed": "Extraction failed",
+      "PendingApproval": "Pending approval",
+      "Approved": "Approved",
+      "Rejected": "Rejected",
+      "Paid": "Paid",
+      "Cancelled": "Cancelled"
+    },
+    "duplicate": {
+      "None": "Not a duplicate",
+      "Suspected": "Possible duplicate",
+      "Cleared": "Confirmed not a duplicate"
+    },
+    "flags": {
+      "overdue": "Overdue"
+    },
+    "fields": {
+      "supplierName": "Supplier",
+      "invoiceNumber": "Invoice number",
+      "invoiceDate": "Invoice date",
+      "dueDate": "Due date",
+      "currency": "Currency",
+      "subtotal": "Net amount",
+      "taxAmount": "VAT",
+      "totalAmount": "Total",
+      "purchaseOrderReference": "PO reference",
+      "status": "Status",
+      "paidOn": "Paid on",
+      "paymentReference": "Payment reference"
+    },
+    "actions": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "submit": "Submit for approval",
+      "enterManually": "Enter manually",
+      "reopen": "Reopen",
+      "markPaid": "Mark as paid",
+      "cancel": "Cancel invoice",
+      "notDuplicate": "Not a duplicate"
+    },
+    "list": {
+      "title": "Invoices",
+      "upload": "Upload invoices",
+      "noSupplier": "No supplier yet",
+      "loadFailed": "The invoices could not be loaded.",
+      "search": {
+        "label": "Search",
+        "placeholder": "Supplier or invoice number"
+      },
+      "filters": {
+        "status": "Status",
+        "overdue": "Overdue only",
+        "more": "More filters",
+        "clear": "Clear filters",
+        "from": "From",
+        "to": "To",
+        "duplicates": "Duplicates",
+        "duplicateStatus": "Duplicate check",
+        "any": "Any"
+      },
+      "columns": {
+        "supplier": "Supplier",
+        "status": "Status",
+        "invoiceDate": "Invoice date",
+        "dueDate": "Due date",
+        "total": "Total",
+        "uploadedAt": "Uploaded"
+      },
+      "empty": {
+        "title": "No invoices yet",
+        "hint": "Upload your first PDF invoice to get started.",
+        "filteredTitle": "No invoices match",
+        "filteredHint": "Try different filters or clear them to see all invoices."
+      }
+    },
+    "detail": {
+      "back": "All invoices",
+      "actions": "Invoice actions",
+      "notFound": "Invoice not found",
+      "loadFailed": "The invoice could not be loaded.",
+      "extracting": "Reading the document. This page updates by itself when extraction is done.",
+      "extractionFailed": "The document could not be read automatically. Enter the fields manually, or cancel the invoice.",
+      "duplicateHint": "An invoice with the same file already exists.",
+      "viewOriginal": "View the original",
+      "fieldsHeading": "Invoice details",
+      "readOnly": "These fields can no longer be edited in this status.",
+      "unsaved": "Unsaved changes",
+      "saveFirst": "Save your changes before submitting",
+      "discard": "Discard changes",
+      "documentHeading": "Document",
+      "downloadPdf": "Download PDF",
+      "summaryHeading": "Summary",
+      "uploadedBy": "Uploaded by",
+      "uploadedAt": "Uploaded",
+      "submittedBy": "Submitted by",
+      "saved": "Changes saved",
+      "enteredManually": "Ready for manual entry",
+      "submitted": "Submitted for approval",
+      "approved": "Invoice approved",
+      "rejected": "Invoice rejected",
+      "reopened": "Invoice reopened",
+      "cancelled": "Invoice cancelled",
+      "duplicateCleared": "Marked as not a duplicate",
+      "paid": "Invoice marked as paid"
+    },
+    "dialogs": {
+      "reason": "Reason",
+      "reject": {
+        "title": "Reject invoice",
+        "hint": "The reason is kept in the invoice history and shown to whoever reopens it."
+      },
+      "cancel": {
+        "title": "Cancel invoice",
+        "hint": "A cancelled invoice stays in the history and cannot be restored."
+      },
+      "notDuplicate": {
+        "title": "Confirm this is not a duplicate",
+        "hint": "Say why this invoice is different from the one it resembles."
+      },
+      "markPaid": {
+        "title": "Mark as paid",
+        "referenceHint": "For example the bank transfer reference"
+      }
+    },
+    "audit": {
+      "heading": "History",
+      "empty": "Nothing has happened yet.",
+      "system": "System",
+      "loadMore": "Show more",
+      "failed": "The history could not be loaded.",
+      "action": {
+        "invoice": {
+          "uploaded": "Uploaded",
+          "duplicate_suspected": "Flagged as possible duplicate",
+          "duplicate_cleared": "Confirmed not a duplicate",
+          "document_downloaded": "Document downloaded",
+          "fields_corrected": "Fields corrected",
+          "processing_started": "Extraction started",
+          "extracted": "Fields extracted",
+          "review_required": "Needs review",
+          "extraction_failed": "Extraction failed",
+          "extraction_retried": "Extraction retried",
+          "manual_entry_started": "Manual entry started",
+          "submitted": "Submitted for approval",
+          "approved": "Approved",
+          "rejected": "Rejected",
+          "reopened": "Reopened",
+          "paid": "Marked as paid",
+          "cancelled": "Cancelled"
+        }
+      }
+    },
+    "upload": {
+      "title": "Upload invoices",
+      "backToList": "Back to invoices",
+      "dropHint": "Drop PDF invoices here",
+      "choose": "Choose files",
+      "rules": "PDF only, up to {{ max }} each. {{ parallel }} files are uploaded at a time.",
+      "queueHeading": "Uploads",
+      "summary": "{{ done }} of {{ total }} uploaded, {{ failed }} failed",
+      "retryFailed": "Retry failed",
+      "clearFinished": "Clear finished",
+      "retry": "Retry upload",
+      "remove": "Remove from list",
+      "open": "Open invoice",
+      "state": {
+        "queued": "Waiting",
+        "uploading": "Uploading",
+        "done": "Uploaded",
+        "failed": "Failed"
+      }
+    }
+  }
+}
