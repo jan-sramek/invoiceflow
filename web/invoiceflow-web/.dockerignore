@@ -1,0 +1,15 @@
+*
+!package.json
+!package-lock.json
+!angular.json
+!tsconfig.json
+!tsconfig.app.json
+!sheriff.config.ts
+!eslint.config.mjs
+!nginx.conf
+!public/
+!src/
+node_modules/
+dist/
+.angular/
+**/*.spec.ts

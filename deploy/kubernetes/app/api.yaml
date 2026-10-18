@@ -58,6 +58,20 @@ spec:
             # X-Development-User personas until Keycloak sign-in in Stage 4
             - name: Authentication__DevelopmentUsers
               value: "true"
+            - name: DocumentStorage__ServiceUrl
+              value: http://seaweedfs.invoiceflow-infra.svc.cluster.local:8333
+            - name: DocumentStorage__Bucket
+              value: invoiceflow-documents
+            - name: DocumentStorage__AccessKey
+              valueFrom:
+                secretKeyRef:
+                  name: document-storage
+                  key: access-key
+            - name: DocumentStorage__SecretKey
+              valueFrom:
+                secretKeyRef:
+                  name: document-storage
+                  key: secret-key
           ports:
             - name: http
               containerPort: 8080
