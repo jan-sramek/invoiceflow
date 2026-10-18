@@ -1,0 +1,54 @@
+@if (entries().length === 0 && !loading() && !failed()) {
+  <p class="empty">{{ 'invoices.audit.empty' | transloco }}</p>
+}
+
+<ol class="timeline">
+  @for (entry of entries(); track entry.id) {
+    <li class="entry" [class.system]="entry.actor.type === 'System'">
+      <div class="head">
+        <span class="action">{{ actionLabel(entry.action) }}</span>
+        <span class="meta">
+          {{ entry.actor.name }}
+          @if (entry.actor.type === 'System') {
+            <span class="badge">{{ 'invoices.audit.system' | transloco }}</span>
+          }
+          · <time [attr.datetime]="entry.occurredAt">{{ entry.occurredAt | ifDateTime: language.locale() }}</time>
+        </span>
+      </div>
+
+      @if (entry.reason) {
+        <blockquote class="reason">{{ entry.reason }}</blockquote>
+      }
+
+      @if (entry.changes.length > 0) {
+        <ul class="changes">
+          @for (change of entry.changes; track change.field) {
+            <li>
+              <span class="field">{{ fieldLabel(change.field) }}</span>
+              <span class="old">{{ valueLabel(change, change.oldValue) }}</span>
+              <span class="arrow" aria-hidden="true">→</span>
+              <span class="new">{{ valueLabel(change, change.newValue) }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </li>
+  }
+</ol>
+
+@if (loading()) {
+  <div class="status"><mat-spinner diameter="22" /></div>
+}
+
+@if (failed()) {
+  <div class="status">
+    <span>{{ 'invoices.audit.failed' | transloco }}</span>
+    <button matButton type="button" (click)="retry.emit()">{{ 'app.common.retry' | transloco }}</button>
+  </div>
+}
+
+@if (hasMore() && !loading() && !failed()) {
+  <div class="status">
+    <button matButton type="button" (click)="loadMore.emit()">{{ 'invoices.audit.loadMore' | transloco }}</button>
+  </div>
+}

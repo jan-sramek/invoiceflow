@@ -1,0 +1,307 @@
+{
+  "app": {
+    "name": "InvoiceFlow",
+    "skipToContent": "Přeskočit na obsah",
+    "nav": {
+      "label": "Hlavní navigace",
+      "invoices": "Faktury",
+      "upload": "Nahrát"
+    },
+    "devUser": {
+      "label": "Přihlášen jako",
+      "hint": "Vývojářské přihlášení: posílá se v hlavičce X-Development-User",
+      "clerk": "Klára Účetní",
+      "approver": "Adam Schvalovatel",
+      "finance": "Filip Finance"
+    },
+    "language": {
+      "label": "Jazyk",
+      "en": "English",
+      "cs": "Čeština"
+    },
+    "common": {
+      "cancel": "Zrušit",
+      "close": "Zavřít",
+      "loading": "Načítání…",
+      "retry": "Zkusit znovu",
+      "save": "Uložit"
+    },
+    "paginator": {
+      "itemsPerPage": "Řádků na stránku",
+      "next": "Další stránka",
+      "previous": "Předchozí stránka",
+      "first": "První stránka",
+      "last": "Poslední stránka",
+      "range": "{{ start }}–{{ end }} z {{ total }}"
+    },
+    "notFound": {
+      "title": "Stránka nenalezena",
+      "hint": "Stránka, kterou hledáte, neexistuje nebo byla přesunuta.",
+      "action": "Přejít na faktury"
+    }
+  },
+  "errors": {
+    "traceId": "ID trasování",
+    "copyTraceId": "Kopírovat ID trasování",
+    "traceCopied": "Zkopírováno",
+    "stale": {
+      "title": "Faktura se změnila",
+      "message": "Někdo jiný fakturu změnil po tom, co jste ji otevřeli. Načtěte ji znovu, abyste viděli aktuální verzi; neuložené úpravy se ztratí.",
+      "reload": "Načíst fakturu znovu",
+      "keep": "Pokračovat v úpravách"
+    },
+    "client": {
+      "network": "Server není dostupný. Zkontrolujte připojení a zkuste to znovu.",
+      "timeout": "Server odpovídal příliš dlouho. Zkuste to znovu.",
+      "canceled": "Požadavek byl zrušen.",
+      "unknown": "Něco se pokazilo. Zkuste to znovu a pokud se to opakuje, nahlaste to s ID trasování."
+    },
+    "http": {
+      "401": "Nejste přihlášeni.",
+      "403": "K této akci nemáte oprávnění.",
+      "404": "Nic takového nebylo nalezeno.",
+      "502": "Služba je dočasně nedostupná. Zkuste to za chvíli.",
+      "503": "Služba je dočasně nedostupná. Zkuste to za chvíli.",
+      "504": "Služba odpovídala příliš dlouho. Zkuste to za chvíli.",
+      "4xx": "Požadavek byl odmítnut. Zkontrolujte zadané údaje a zkuste to znovu.",
+      "5xx": "Na serveru nastala chyba. Zkuste to znovu a pokud se to opakuje, nahlaste to s ID trasování."
+    },
+    "request": {
+      "malformed": "Požadavek se nepodařilo přečíst.",
+      "invalid": "Požadavek byl odmítnut.",
+      "not_found": "Nic takového nebylo nalezeno.",
+      "method_not_allowed": "Tato akce není dostupná.",
+      "unsupported_media_type": "Formát požadavku není podporován."
+    },
+    "validation": {
+      "failed": "Některé hodnoty jsou neplatné. Opravte označená pole a zkuste to znovu.",
+      "invalid_format": "Hodnota má špatný formát.",
+      "unknown_property": "Toto pole není rozpoznáno.",
+      "required": "Toto pole je povinné.",
+      "max_length": "Použijte nejvýše {{ max }} znaků.",
+      "out_of_range": "Zadejte hodnotu od {{ min }} do {{ max }}.",
+      "range_reversed": "Hodnota nesmí být dřívější než {{ from }}.",
+      "not_allowed": "Vyberte jednu z možností: {{ allowed }}.",
+      "currency_invalid": "Použijte třípísmenný kód měny, například EUR.",
+      "amount_precision": "Použijte nejvýše {{ maxDecimals }} desetinných míst.",
+      "amount_out_of_range": "Částka je příliš vysoká; maximum je {{ max }}.",
+      "must_be_positive": "Zadejte částku větší než nula.",
+      "total_mismatch": "Celkem musí odpovídat základu plus DPH.",
+      "date_in_future": "Datum nesmí být v budoucnosti.",
+      "due_date_before_invoice_date": "Splatnost nesmí být před datem faktury."
+    },
+    "invoice": {
+      "not_found": "Tato faktura neexistuje nebo k ní nemáte přístup.",
+      "invalid_transition": "Stav faktury je {{ from }}, proto akce „{{ action }}“ není možná. Načtěte ji znovu a vyberte dostupnou akci.",
+      "not_ready_for_submission": "Před odesláním doplňte označená pole.",
+      "payment_date_in_future": "Zadejte datum, kdy byla platba skutečně provedena.",
+      "unresolved_duplicate": "Faktura může být duplicitní. Potvrďte, že není, nebo ji zrušte."
+    },
+    "approval": {
+      "own_invoice": "Fakturu, kterou jste sami odeslali, nemůžete schválit ani zamítnout. Požádejte jiného schvalovatele."
+    },
+    "upload": {
+      "too_large": "Soubor je větší než povolených {{ maxSize }}.",
+      "not_pdf": "Přijímají se pouze soubory PDF."
+    },
+    "idempotency": {
+      "key_required": "Nahrání se nepodařilo identifikovat. Zkuste to znovu.",
+      "in_progress": "Toto nahrání se stále zpracovává. Zkuste to za chvíli.",
+      "key_reused": "Nahrání se nepodařilo přiřadit k souboru. Zkuste to znovu."
+    },
+    "auth": {
+      "user_required": "Nejste přihlášeni. Vyberte uživatele v záhlaví."
+    },
+    "concurrency": {
+      "if_match_required": "Chybí verze faktury. Načtěte ji znovu a zkuste to znovu.",
+      "stale_version": "Někdo fakturu změnil po tom, co jste ji otevřeli. Načtěte ji znovu a zkuste to znovu."
+    },
+    "tenant": {
+      "unavailable": "Data vaší organizace jsou dočasně nedostupná. Zkuste to za chvíli."
+    },
+    "storage": {
+      "unavailable": "Úložiště dokumentů je dočasně nedostupné. Zkuste to za chvíli."
+    },
+    "server": {
+      "unexpected": "Nastala neočekávaná chyba. Nahlaste ji s ID trasování."
+    }
+  },
+  "invoices": {
+    "status": {
+      "Uploaded": "Nahráno",
+      "Processing": "Zpracovává se",
+      "Extracted": "Vytěženo",
+      "NeedsReview": "Ke kontrole",
+      "ExtractionFailed": "Vytěžení selhalo",
+      "PendingApproval": "Čeká na schválení",
+      "Approved": "Schváleno",
+      "Rejected": "Zamítnuto",
+      "Paid": "Zaplaceno",
+      "Cancelled": "Zrušeno"
+    },
+    "duplicate": {
+      "None": "Není duplicita",
+      "Suspected": "Možná duplicita",
+      "Cleared": "Potvrzeno, že není duplicita"
+    },
+    "flags": {
+      "overdue": "Po splatnosti"
+    },
+    "fields": {
+      "supplierName": "Dodavatel",
+      "invoiceNumber": "Číslo faktury",
+      "invoiceDate": "Datum faktury",
+      "dueDate": "Splatnost",
+      "currency": "Měna",
+      "subtotal": "Základ",
+      "taxAmount": "DPH",
+      "totalAmount": "Celkem",
+      "purchaseOrderReference": "Číslo objednávky",
+      "status": "Stav",
+      "paidOn": "Zaplaceno dne",
+      "paymentReference": "Reference platby"
+    },
+    "actions": {
+      "approve": "Schválit",
+      "reject": "Zamítnout",
+      "submit": "Odeslat ke schválení",
+      "enterManually": "Zadat ručně",
+      "reopen": "Znovu otevřít",
+      "markPaid": "Označit jako zaplacenou",
+      "cancel": "Zrušit fakturu",
+      "notDuplicate": "Není duplicita"
+    },
+    "list": {
+      "title": "Faktury",
+      "upload": "Nahrát faktury",
+      "noSupplier": "Zatím bez dodavatele",
+      "loadFailed": "Faktury se nepodařilo načíst.",
+      "search": {
+        "label": "Hledat",
+        "placeholder": "Dodavatel nebo číslo faktury"
+      },
+      "filters": {
+        "status": "Stav",
+        "overdue": "Jen po splatnosti",
+        "more": "Další filtry",
+        "clear": "Zrušit filtry",
+        "from": "Od",
+        "to": "Do",
+        "duplicates": "Duplicity",
+        "duplicateStatus": "Kontrola duplicit",
+        "any": "Libovolná"
+      },
+      "columns": {
+        "supplier": "Dodavatel",
+        "status": "Stav",
+        "invoiceDate": "Datum faktury",
+        "dueDate": "Splatnost",
+        "total": "Celkem",
+        "uploadedAt": "Nahráno"
+      },
+      "empty": {
+        "title": "Zatím žádné faktury",
+        "hint": "Začněte nahráním první faktury ve formátu PDF.",
+        "filteredTitle": "Žádné faktury neodpovídají",
+        "filteredHint": "Zkuste jiné filtry, nebo je zrušte a zobrazte všechny faktury."
+      }
+    },
+    "detail": {
+      "back": "Všechny faktury",
+      "actions": "Akce s fakturou",
+      "notFound": "Faktura nenalezena",
+      "loadFailed": "Fakturu se nepodařilo načíst.",
+      "extracting": "Dokument se čte. Stránka se sama aktualizuje, až bude vytěžení hotové.",
+      "extractionFailed": "Dokument se nepodařilo přečíst automaticky. Vyplňte pole ručně, nebo fakturu zrušte.",
+      "duplicateHint": "Faktura se stejným souborem již existuje.",
+      "viewOriginal": "Zobrazit původní",
+      "fieldsHeading": "Údaje faktury",
+      "readOnly": "V tomto stavu už nelze pole upravovat.",
+      "unsaved": "Neuložené změny",
+      "saveFirst": "Před odesláním uložte změny",
+      "discard": "Zahodit změny",
+      "documentHeading": "Dokument",
+      "downloadPdf": "Stáhnout PDF",
+      "summaryHeading": "Souhrn",
+      "uploadedBy": "Nahrál(a)",
+      "uploadedAt": "Nahráno",
+      "submittedBy": "Odeslal(a)",
+      "saved": "Změny uloženy",
+      "enteredManually": "Připraveno k ručnímu zadání",
+      "submitted": "Odesláno ke schválení",
+      "approved": "Faktura schválena",
+      "rejected": "Faktura zamítnuta",
+      "reopened": "Faktura znovu otevřena",
+      "cancelled": "Faktura zrušena",
+      "duplicateCleared": "Označeno jako není duplicita",
+      "paid": "Faktura označena jako zaplacená"
+    },
+    "dialogs": {
+      "reason": "Důvod",
+      "reject": {
+        "title": "Zamítnout fakturu",
+        "hint": "Důvod se uloží do historie faktury a uvidí ho ten, kdo ji znovu otevře."
+      },
+      "cancel": {
+        "title": "Zrušit fakturu",
+        "hint": "Zrušená faktura zůstane v historii a nelze ji obnovit."
+      },
+      "notDuplicate": {
+        "title": "Potvrdit, že nejde o duplicitu",
+        "hint": "Uveďte, čím se tato faktura liší od té, které se podobá."
+      },
+      "markPaid": {
+        "title": "Označit jako zaplacenou",
+        "referenceHint": "Například reference bankovního převodu"
+      }
+    },
+    "audit": {
+      "heading": "Historie",
+      "empty": "Zatím se nic nestalo.",
+      "system": "Systém",
+      "loadMore": "Zobrazit další",
+      "failed": "Historii se nepodařilo načíst.",
+      "action": {
+        "invoice": {
+          "uploaded": "Nahráno",
+          "duplicate_suspected": "Označeno jako možná duplicita",
+          "duplicate_cleared": "Potvrzeno, že nejde o duplicitu",
+          "document_downloaded": "Dokument stažen",
+          "fields_corrected": "Pole opravena",
+          "processing_started": "Vytěžování zahájeno",
+          "extracted": "Pole vytěžena",
+          "review_required": "Ke kontrole",
+          "extraction_failed": "Vytěžení selhalo",
+          "extraction_retried": "Vytěžení opakováno",
+          "manual_entry_started": "Zahájeno ruční zadání",
+          "submitted": "Odesláno ke schválení",
+          "approved": "Schváleno",
+          "rejected": "Zamítnuto",
+          "reopened": "Znovu otevřeno",
+          "paid": "Označeno jako zaplacené",
+          "cancelled": "Zrušeno"
+        }
+      }
+    },
+    "upload": {
+      "title": "Nahrát faktury",
+      "backToList": "Zpět na faktury",
+      "dropHint": "Přetáhněte sem faktury ve formátu PDF",
+      "choose": "Vybrat soubory",
+      "rules": "Pouze PDF, každý nejvýše {{ max }}. Současně se nahrávají {{ parallel }} soubory.",
+      "queueHeading": "Nahrávání",
+      "summary": "Nahráno {{ done }} z {{ total }}, selhalo {{ failed }}",
+      "retryFailed": "Zopakovat neúspěšné",
+      "clearFinished": "Vymazat dokončené",
+      "retry": "Zopakovat nahrání",
+      "remove": "Odebrat ze seznamu",
+      "open": "Otevřít fakturu",
+      "state": {
+        "queued": "Čeká",
+        "uploading": "Nahrává se",
+        "done": "Nahráno",
+        "failed": "Selhalo"
+      }
+    }
+  }
+}

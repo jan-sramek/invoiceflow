@@ -1,0 +1,300 @@
+<section class="page">
+  <a class="back" routerLink="/invoices">
+    <mat-icon>arrow_back</mat-icon>
+    {{ 'invoices.detail.back' | transloco }}
+  </a>
+
+  @if (store.loading() && !store.invoice()) {
+    <div class="center"><mat-spinner diameter="36" [attr.aria-label]="'app.common.loading' | transloco" /></div>
+  } @else if (store.loadError(); as error) {
+    <div class="card notice error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <div class="body">
+        <strong>
+          {{ (notFound() ? 'invoices.detail.notFound' : 'invoices.detail.loadFailed') | transloco }}
+        </strong>
+        <span>{{ loadErrorText() }}</span>
+        @if (error.traceId) {
+          <span class="trace">{{ 'errors.traceId' | transloco }}: <code>{{ error.traceId }}</code></span>
+        }
+      </div>
+      @if (!notFound()) {
+        <button matButton type="button" (click)="store.reload()">{{ 'app.common.retry' | transloco }}</button>
+      }
+    </div>
+  } @else if (store.invoice(); as invoice) {
+    <header class="head">
+      <div class="title">
+        <h1>
+          @if (title()) {
+            {{ title() }}
+          }
+        </h1>
+        <div class="chips">
+          <if-invoice-status-chip [status]="invoice.status" />
+          <if-invoice-flags [duplicate]="invoice.duplicate?.status ?? null" />
+        </div>
+        @if (invoice.fields.invoiceNumber) {
+          <div class="sub">{{ 'invoices.fields.invoiceNumber' | transloco }} {{ invoice.fields.invoiceNumber }}</div>
+        }
+      </div>
+
+      @if (store.capabilities(); as can) {
+        <div class="actions" role="toolbar" [attr.aria-label]="'invoices.detail.actions' | transloco">
+          @if (can.canApprove) {
+            <button matButton="filled" type="button" [disabled]="store.busy()" (click)="store.approve()">
+              <mat-icon>check_circle</mat-icon>{{ 'invoices.actions.approve' | transloco }}
+            </button>
+          }
+          @if (can.canReject) {
+            <button matButton="outlined" type="button" [disabled]="store.busy()" (click)="reject()">
+              <mat-icon>block</mat-icon>{{ 'invoices.actions.reject' | transloco }}
+            </button>
+          }
+          @if (can.canSubmit) {
+            <button
+              matButton="filled"
+              type="button"
+              [disabled]="store.busy() || form.dirty"
+              [attr.title]="form.dirty ? ('invoices.detail.saveFirst' | transloco) : null"
+              (click)="store.submit()"
+            >
+              <mat-icon>send</mat-icon>{{ 'invoices.actions.submit' | transloco }}
+            </button>
+          }
+          @if (can.canEnterManually) {
+            <button matButton="tonal" type="button" [disabled]="store.busy()" (click)="store.enterManually()">
+              <mat-icon>edit_note</mat-icon>{{ 'invoices.actions.enterManually' | transloco }}
+            </button>
+          }
+          @if (can.canReopen) {
+            <button matButton="tonal" type="button" [disabled]="store.busy()" (click)="store.reopen()">
+              <mat-icon>undo</mat-icon>{{ 'invoices.actions.reopen' | transloco }}
+            </button>
+          }
+          @if (can.canMarkPaid) {
+            <button matButton="filled" type="button" [disabled]="store.busy()" (click)="markPaid()">
+              <mat-icon>payments</mat-icon>{{ 'invoices.actions.markPaid' | transloco }}
+            </button>
+          }
+          @if (can.canCancel) {
+            <button matButton type="button" class="danger" [disabled]="store.busy()" (click)="cancel()">
+              {{ 'invoices.actions.cancel' | transloco }}
+            </button>
+          }
+        </div>
+      }
+    </header>
+
+    @if (store.busy()) {
+      <mat-progress-bar mode="indeterminate" class="busy" />
+    }
+
+    @if (store.extracting()) {
+      <div class="banner info" role="status">
+        <mat-spinner diameter="20" />
+        <span>{{ 'invoices.detail.extracting' | transloco }}</span>
+      </div>
+    }
+
+    @if (invoice.status === 'ExtractionFailed') {
+      <div class="banner warn" role="status">
+        <mat-icon>warning_amber</mat-icon>
+        <span>{{ 'invoices.detail.extractionFailed' | transloco }}</span>
+      </div>
+    }
+
+    @if (invoice.duplicate; as duplicate) {
+      @if (duplicate.status === 'Suspected') {
+        <div class="banner warn" role="alert">
+          <mat-icon>content_copy</mat-icon>
+          <div class="grow">
+            <strong>{{ 'invoices.duplicate.Suspected' | transloco }}</strong>
+            <span>
+              {{ 'invoices.detail.duplicateHint' | transloco }}
+              @if (duplicate.originalInvoiceId) {
+                <a [routerLink]="['/invoices', duplicate.originalInvoiceId]">
+                  {{ 'invoices.detail.viewOriginal' | transloco }}
+                </a>
+              }
+            </span>
+          </div>
+          @if (store.capabilities()?.canAcknowledgeDuplicate) {
+            <button matButton="outlined" type="button" [disabled]="store.busy()" (click)="acknowledgeNotDuplicate()">
+              {{ 'invoices.actions.notDuplicate' | transloco }}
+            </button>
+          }
+        </div>
+      } @else if (duplicate.status === 'Cleared') {
+        <div class="banner ok" role="status">
+          <mat-icon>verified</mat-icon>
+          <span>{{ 'invoices.duplicate.Cleared' | transloco }}</span>
+        </div>
+      }
+    }
+
+    @if (unmapped().length > 0) {
+      <div class="banner error" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <ul class="grow">
+          @for (error of unmapped(); track $index) {
+            <li>{{ unmappedMessage(error) }}</li>
+          }
+        </ul>
+      </div>
+    }
+
+    <div class="grid">
+      <div class="col main">
+        <form class="card" [formGroup]="form" (ngSubmit)="save()" novalidate>
+          <h2>{{ 'invoices.detail.fieldsHeading' | transloco }}</h2>
+          @if (!editable()) {
+            <p class="muted">{{ 'invoices.detail.readOnly' | transloco }}</p>
+          }
+
+          <div class="fields">
+            <mat-form-field appearance="outline" class="span-2">
+              <mat-label>{{ 'invoices.fields.supplierName' | transloco }}</mat-label>
+              <input matInput formControlName="supplierName" [readonly]="!editable()" />
+              <mat-error><if-field-error [control]="form.controls.supplierName" /></mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>{{ 'invoices.fields.invoiceNumber' | transloco }}</mat-label>
+              <input matInput formControlName="invoiceNumber" [readonly]="!editable()" />
+              <mat-error><if-field-error [control]="form.controls.invoiceNumber" /></mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>{{ 'invoices.fields.purchaseOrderReference' | transloco }}</mat-label>
+              <input matInput formControlName="purchaseOrderReference" [readonly]="!editable()" />
+              <mat-error><if-field-error [control]="form.controls.purchaseOrderReference" /></mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>{{ 'invoices.fields.invoiceDate' | transloco }}</mat-label>
+              <input matInput type="date" formControlName="invoiceDate" [readonly]="!editable()" />
+              <mat-error><if-field-error [control]="form.controls.invoiceDate" /></mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>{{ 'invoices.fields.dueDate' | transloco }}</mat-label>
+              <input matInput type="date" formControlName="dueDate" [readonly]="!editable()" />
+              <mat-error><if-field-error [control]="form.controls.dueDate" /></mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>{{ 'invoices.fields.currency' | transloco }}</mat-label>
+              <input
+                matInput
+                formControlName="currency"
+                maxlength="3"
+                placeholder="EUR"
+                class="upper"
+                [readonly]="!editable()"
+              />
+              <mat-error><if-field-error [control]="form.controls.currency" /></mat-error>
+            </mat-form-field>
+
+            <span class="spacer"></span>
+
+            <mat-form-field appearance="outline">
+              <mat-label>{{ 'invoices.fields.subtotal' | transloco }}</mat-label>
+              <input matInput type="number" step="0.01" formControlName="subtotal" class="num" [readonly]="!editable()" />
+              <mat-error><if-field-error [control]="form.controls.subtotal" /></mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>{{ 'invoices.fields.taxAmount' | transloco }}</mat-label>
+              <input matInput type="number" step="0.01" formControlName="taxAmount" class="num" [readonly]="!editable()" />
+              <mat-error><if-field-error [control]="form.controls.taxAmount" /></mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>{{ 'invoices.fields.totalAmount' | transloco }}</mat-label>
+              <input matInput type="number" step="0.01" formControlName="totalAmount" class="num" [readonly]="!editable()" />
+              <mat-error><if-field-error [control]="form.controls.totalAmount" /></mat-error>
+            </mat-form-field>
+          </div>
+
+          @if (editable()) {
+            <div class="form-actions">
+              <button matButton="filled" type="submit" [disabled]="store.busy() || !form.dirty">
+                {{ 'app.common.save' | transloco }}
+              </button>
+              <button matButton type="button" [disabled]="store.busy() || !form.dirty" (click)="discard()">
+                {{ 'invoices.detail.discard' | transloco }}
+              </button>
+              @if (form.dirty) {
+                <span class="muted">{{ 'invoices.detail.unsaved' | transloco }}</span>
+              }
+            </div>
+          }
+        </form>
+
+        <section class="card">
+          <h2>{{ 'invoices.audit.heading' | transloco }}</h2>
+          <if-audit-timeline
+            [entries]="store.audit()"
+            [loading]="store.auditLoading()"
+            [hasMore]="store.hasMoreAudit()"
+            [failed]="store.auditError() !== null"
+            (loadMore)="store.loadMoreAudit()"
+            (retry)="store.loadMoreAudit()"
+          />
+        </section>
+      </div>
+
+      <aside class="col side">
+        <section class="card">
+          <h2>{{ 'invoices.detail.documentHeading' | transloco }}</h2>
+          <div class="doc">
+            <mat-icon class="pdf">picture_as_pdf</mat-icon>
+            <div class="doc-info">
+              <span class="doc-name">{{ invoice.document.originalFileName }}</span>
+              <span class="muted">{{ invoice.document.sizeBytes | ifBytes: language.locale() }}</span>
+            </div>
+          </div>
+          <button
+            matButton="tonal"
+            type="button"
+            class="download"
+            [disabled]="store.downloading()"
+            (click)="store.downloadDocument()"
+          >
+            @if (store.downloading()) {
+              <mat-spinner diameter="18" />
+            } @else {
+              <mat-icon>download</mat-icon>
+            }
+            {{ 'invoices.detail.downloadPdf' | transloco }}
+          </button>
+        </section>
+
+        <section class="card">
+          <h2>{{ 'invoices.detail.summaryHeading' | transloco }}</h2>
+          <dl class="meta">
+            <dt>{{ 'invoices.detail.uploadedBy' | transloco }}</dt>
+            <dd>{{ invoice.uploadedBy.name }}</dd>
+            <dt>{{ 'invoices.detail.uploadedAt' | transloco }}</dt>
+            <dd>{{ invoice.uploadedAt | ifDateTime: language.locale() }}</dd>
+            @if (invoice.submittedBy; as submitter) {
+              <dt>{{ 'invoices.detail.submittedBy' | transloco }}</dt>
+              <dd>{{ submitter.name }}</dd>
+            }
+            @if (invoice.fields.totalAmount !== null) {
+              <dt>{{ 'invoices.fields.totalAmount' | transloco }}</dt>
+              <dd class="strong">{{ invoice.fields.totalAmount | ifMoney: invoice.fields.currency : language.locale() }}</dd>
+            }
+            @if (invoice.paidOn) {
+              <dt>{{ 'invoices.fields.paidOn' | transloco }}</dt>
+              <dd>{{ invoice.paidOn | ifDate: language.locale() }}</dd>
+              <dt>{{ 'invoices.fields.paymentReference' | transloco }}</dt>
+              <dd>{{ invoice.paymentReference }}</dd>
+            }
+          </dl>
+        </section>
+      </aside>
+    </div>
+  }
+</section>

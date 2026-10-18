@@ -1,0 +1,139 @@
+<section class="page">
+  <header class="page-head">
+    <h1>{{ 'invoices.upload.title' | transloco }}</h1>
+    <a matButton routerLink="/invoices">
+      <mat-icon>arrow_back</mat-icon>
+      {{ 'invoices.upload.backToList' | transloco }}
+    </a>
+  </header>
+
+  <div
+    class="card dropzone"
+    [class.dragging]="dragging()"
+    (dragover)="onDragOver($event)"
+    (dragleave)="dragging.set(false)"
+    (drop)="onDrop($event)"
+  >
+    <mat-icon class="big">cloud_upload</mat-icon>
+    <p class="lead">{{ 'invoices.upload.dropHint' | transloco }}</p>
+    <button matButton="filled" type="button" (click)="choose()">
+      <mat-icon>folder_open</mat-icon>
+      {{ 'invoices.upload.choose' | transloco }}
+    </button>
+    <p class="muted">
+      {{ 'invoices.upload.rules' | transloco: { max: (maxBytes | ifBytes: language.locale()), parallel: maxParallel } }}
+    </p>
+    <input
+      #fileInput
+      type="file"
+      multiple
+      accept="application/pdf,.pdf"
+      class="visually-hidden"
+      tabindex="-1"
+      [attr.aria-label]="'invoices.upload.choose' | transloco"
+      (change)="onFilesChosen($event)"
+    />
+  </div>
+
+  @if (store.items().length > 0) {
+    <section class="card queue" aria-live="polite">
+      <div class="queue-head">
+        <h2>{{ 'invoices.upload.queueHeading' | transloco }}</h2>
+        <span class="muted">
+          {{
+            'invoices.upload.summary'
+              | transloco: { done: store.doneCount(), total: store.items().length, failed: store.failedCount() }
+          }}
+        </span>
+        <span class="spacer"></span>
+        @if (store.failedCount() > 0) {
+          <button matButton type="button" (click)="store.retryFailed()">
+            <mat-icon>refresh</mat-icon>
+            {{ 'invoices.upload.retryFailed' | transloco }}
+          </button>
+        }
+        <button matButton type="button" (click)="store.clearFinished()">
+          {{ 'invoices.upload.clearFinished' | transloco }}
+        </button>
+      </div>
+
+      <ul class="items">
+        @for (item of store.items(); track item.id) {
+          <li class="item" [attr.data-state]="item.state">
+            <mat-icon class="state-icon" aria-hidden="true">
+              @switch (item.state) {
+                @case ('done') {
+                  check_circle
+                }
+                @case ('failed') {
+                  error
+                }
+                @default {
+                  description
+                }
+              }
+            </mat-icon>
+
+            <div class="info">
+              <div class="name">{{ item.file.name }}</div>
+              <div class="muted">
+                {{ item.file.size | ifBytes: language.locale() }} ·
+                {{ 'invoices.upload.state.' + item.state | transloco }}
+              </div>
+
+              @if (item.state === 'uploading') {
+                <mat-progress-bar
+                  mode="determinate"
+                  [value]="item.percent"
+                  [attr.aria-label]="item.file.name"
+                />
+              } @else if (item.state === 'queued') {
+                <mat-progress-bar mode="query" [attr.aria-label]="item.file.name" />
+              }
+
+              @if (item.state === 'failed') {
+                <div class="error" role="alert">
+                  {{ errorText(item) }}
+                  @if (item.error?.traceId; as traceId) {
+                    <span class="trace">{{ 'errors.traceId' | transloco }}: <code>{{ traceId }}</code></span>
+                  }
+                </div>
+              }
+
+              @if (item.state === 'done' && item.invoice; as invoice) {
+                <div class="result">
+                  <if-invoice-status-chip [status]="invoice.status" />
+                  <if-invoice-flags [duplicate]="invoice.duplicate?.status ?? null" />
+                  <a [routerLink]="['/invoices', invoice.id]">{{ 'invoices.upload.open' | transloco }}</a>
+                </div>
+              }
+            </div>
+
+            <div class="row-actions">
+              @if (item.state === 'failed') {
+                <button
+                  matIconButton
+                  type="button"
+                  [attr.aria-label]="'invoices.upload.retry' | transloco"
+                  (click)="store.retry(item.id)"
+                >
+                  <mat-icon>refresh</mat-icon>
+                </button>
+              }
+              @if (item.state !== 'uploading') {
+                <button
+                  matIconButton
+                  type="button"
+                  [attr.aria-label]="'invoices.upload.remove' | transloco"
+                  (click)="store.remove(item.id)"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+</section>
