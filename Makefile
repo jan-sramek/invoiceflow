@@ -42,7 +42,7 @@ endif
 	seaweedfs-up seaweedfs-down s3-credentials s3-forward s3-check images web-image \
 	app-up app-down app-check rabbitmq-up rabbitmq-down rabbitmq-password rabbitmq-ui \
 	keycloak-image keycloak-up keycloak-down keycloak-password keycloak-admin \
-	db-up db-migrate db-down
+	db-up db-migrate db-down stack-up e2e-install e2e-typecheck e2e-smoke
 
 help:
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -231,6 +231,8 @@ app-up: images db-migrate ## Build the images, migrate the databases and deploy 
 	@echo "App: http://invoiceflow.localhost:8080/"
 	@echo "API: http://invoiceflow.localhost:8080/api"
 
+stack-up: postgres-up seaweedfs-up db-up app-up ## Deploy PostgreSQL, SeaweedFS, the databases and the app, in that order (run make up first)
+
 app-down: doctor ## Remove the API, worker and web
 	@$(KUBECTL) delete -f deploy/kubernetes/app/ --ignore-not-found
 
@@ -284,3 +286,14 @@ keycloak-password: ## Print the password of the temporary Keycloak admin
 keycloak-admin: doctor ## Forward the Keycloak admin console to localhost:18080 (Ctrl+C to stop)
 	@echo "Admin console: http://localhost:$(KEYCLOAK_ADMIN_PORT)/admin (user admin, password from make keycloak-password)"
 	@$(KUBECTL) port-forward service/keycloak $(KEYCLOAK_ADMIN_PORT):8080 --namespace $(INFRA_NS)
+
+# The tests drive the app in the cluster through the ingress, so run make stack-up (or app-up) first; see tests/e2e/README.md
+e2e-install: ## Install the end-to-end test dependencies and the Chromium browser for Playwright
+	@npm ci --prefix tests/e2e
+	@cd tests/e2e && npx playwright install --with-deps chromium
+
+e2e-typecheck: ## Typecheck the end-to-end tests
+	@npm run typecheck --prefix tests/e2e
+
+e2e-smoke: ## Upload an invoice through the app in the cluster and check it is listed (BASE_URL overrides the address)
+	@npm run test:smoke --prefix tests/e2e
