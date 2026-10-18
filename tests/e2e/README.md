@@ -1,7 +1,16 @@
 # End-to-end tests
 
-[Playwright](https://playwright.dev) tests that drive the deployed web app in the local k3d cluster.
+[Playwright](https://playwright.dev) smoke tests that drive the web UI against a running app.
 They run **locally only**; CI does not start a cluster yet (that is Stage 8).
+
+## Environments
+
+| Where you work | How the app is served | Smoke target |
+|---|---|---|
+| **macOS + Colima** (project default) | `make up` then `make stack-up` → Traefik at `http://invoiceflow.localhost:8080` | `make e2e-smoke` |
+| **Windows** | No Colima/`make stack-up` yet. Run API + Angular locally (see below), or use a remote Mac/CI later. | PowerShell + `BASE_URL` |
+
+`make doctor` / `make stack-up` expect Colima (`DOCKER_HOST=unix://…/.colima/invoiceflow/docker.sock`) and k3d. That path is not supported on Windows today.
 
 ## Smoke test
 
@@ -13,9 +22,7 @@ They run **locally only**; CI does not start a cluster yet (that is Stage 8).
 
 Each run appends a unique comment to the PDF, so repeated runs never end up as duplicates of each other.
 
-## Run it
-
-The app must already be running in the cluster:
+## Run it (macOS / Colima)
 
 ```sh
 make up          # VM and cluster, if not running yet
@@ -24,16 +31,49 @@ make e2e-install # once: npm ci and the Chromium browser for Playwright
 make e2e-smoke
 ```
 
-The tests use `http://invoiceflow.localhost:8080` by default. Set `BASE_URL` to test another address:
+## Run it (Windows, local API + `ng serve`)
+
+You need a Development API with catalog/tenant databases (and optional document storage). The Angular app proxies `/api` to `http://localhost:5080`.
+
+```powershell
+# once
+cd tests/e2e
+npm ci
+npx playwright install chromium
+
+# terminal 1 — API (from repo root; configure ConnectionStrings as you do for local Development)
+dotnet run --project src/InvoiceFlow.Api --launch-profile http
+
+# terminal 2 — web
+cd web/invoiceflow-web
+npm start
+
+# terminal 3 — smoke
+cd tests/e2e
+$env:BASE_URL = "http://localhost:4200"
+npm run test:smoke
+```
+
+Without a working catalog/tenant database, upload will fail even if the UI loads.
+
+## Overrides
+
+Default `BASE_URL` is `http://invoiceflow.localhost:8080`.
 
 ```sh
+# bash / make
 BASE_URL=http://localhost:4200 make e2e-smoke
+```
+
+```powershell
+$env:BASE_URL = "http://localhost:4200"
+npm run test:smoke --prefix tests/e2e
 ```
 
 On failure Playwright keeps a trace and screenshot in `test-results/`; the HTML report is in `playwright-report/`
 (`npm run report` in this folder). Both folders are git-ignored.
 
-`make e2e-typecheck` typechecks the tests without needing a cluster.
+`make e2e-typecheck` / `npm run typecheck` typecheck without needing an app.
 
 ## Adding tests
 
