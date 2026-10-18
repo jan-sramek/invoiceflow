@@ -34,3 +34,14 @@ ensure_secret invoiceflow rabbitmq-api password
 ensure_secret invoiceflow rabbitmq-worker password
 ensure_secret invoiceflow catalog-app password
 ensure_secret invoiceflow catalog-migrator password
+
+# The API reads document-storage; SeaweedFS was started with seaweedfs-s3. Same values.
+if ! "${kubectl[@]}" -n invoiceflow get secret document-storage >/dev/null 2>&1; then
+  access="$("${kubectl[@]}" -n invoiceflow-infra get secret seaweedfs-s3 -o jsonpath='{.data.access-key}' | base64 -d)"
+  secret="$("${kubectl[@]}" -n invoiceflow-infra get secret seaweedfs-s3 -o jsonpath='{.data.secret-key}' | base64 -d)"
+  "${kubectl[@]}" -n invoiceflow create secret generic document-storage \
+    --from-literal=access-key="$access" --from-literal=secret-key="$secret" >/dev/null
+  echo "Secret invoiceflow/document-storage created from invoiceflow-infra/seaweedfs-s3"
+else
+  echo "Secret invoiceflow/document-storage already exists"
+fi

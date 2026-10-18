@@ -39,7 +39,7 @@ endif
 .PHONY: help up down doctor cluster-up cluster-down cluster-status ollama-up ollama-down ollama-check \
 	observability-up observability-down grafana-password dashboard-url telemetry-check dashboard-up dashboard-down \
 	postgres-up postgres-down postgres-password db-forward psql \
-	seaweedfs-up seaweedfs-down s3-credentials s3-forward s3-check images \
+	seaweedfs-up seaweedfs-down s3-credentials s3-forward s3-check images web-image \
 	app-up app-down app-check rabbitmq-up rabbitmq-down rabbitmq-password rabbitmq-ui \
 	keycloak-image keycloak-up keycloak-down keycloak-password keycloak-admin \
 	db-up db-migrate db-down
@@ -205,7 +205,7 @@ s3-forward: doctor ## Forward the S3 API to localhost:18333 (Ctrl+C to stop)
 s3-check: doctor ## Upload, read and delete a test object through the S3 API
 	@./scripts/s3-check.sh $(S3_FORWARD_PORT)
 
-images: doctor ## Build the API, worker and migrator images and push them to the cluster registry
+images: doctor web-image ## Build the API, worker, migrator and web images and push them to the cluster registry
 	@for app in $(APPS); do \
 		image=$(REGISTRY)/invoiceflow-$$(echo $$app | tr '[:upper:]' '[:lower:]'):$(IMAGE_TAG); \
 		docker buildx build --quiet --push --file src/InvoiceFlow.$$app/Dockerfile \
@@ -213,16 +213,25 @@ images: doctor ## Build the API, worker and migrator images and push them to the
 		echo "Pushed $$image"; \
 	done
 
-app-up: images db-migrate ## Build the images, migrate the databases and deploy the API and worker
+web-image: doctor ## Build the Angular web image and push it to the cluster registry
+	@image=$(REGISTRY)/invoiceflow-web:$(IMAGE_TAG); \
+		docker buildx build --quiet --push --file web/invoiceflow-web/Dockerfile \
+			--tag $$image web/invoiceflow-web >/dev/null || exit 1; \
+		echo "Pushed $$image"
+
+app-up: images db-migrate ## Build the images, migrate the databases and deploy the API, worker and web
+	@./scripts/create-local-secrets.sh
 	@$(KUBECTL) apply -f deploy/kubernetes/namespace.yaml
 	@for manifest in deploy/kubernetes/app/*.yaml; do \
 		sed -e 's/$${IMAGE_TAG}/$(IMAGE_TAG)/g' -e 's/$${DEVELOPMENT_TENANT_ID}/$(DEVELOPMENT_TENANT_ID)/g' $$manifest; echo ---; \
 	done | $(KUBECTL) apply -f -
 	@$(KUBECTL) rollout status deployment/api --namespace $(APP_NS) --timeout 5m
 	@$(KUBECTL) rollout status deployment/worker --namespace $(APP_NS) --timeout 5m
+	@$(KUBECTL) rollout status deployment/web --namespace $(APP_NS) --timeout 5m
+	@echo "App: http://invoiceflow.localhost:8080/"
 	@echo "API: http://invoiceflow.localhost:8080/api"
 
-app-down: doctor ## Remove the API and worker
+app-down: doctor ## Remove the API, worker and web
 	@$(KUBECTL) delete -f deploy/kubernetes/app/ --ignore-not-found
 
 app-check: ## Send a request through the ingress and print where to find its log line and trace

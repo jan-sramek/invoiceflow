@@ -7,6 +7,10 @@ Angular app for InvoiceFlow (Stage 1: list, detail, upload, edit, lifecycle).
 - Node.js 24.x
 - API on `http://localhost:5080` (Development) for `npm start`
 
+## Cluster
+
+`make app-up` builds this image, deploys it behind Traefik at `http://invoiceflow.localhost:8080/`, and keeps `/api` on the API. Runtime `config.json` uses relative `/api`, so one build works locally and in k3d.
+
 ## Scripts
 
 | Command | Purpose |

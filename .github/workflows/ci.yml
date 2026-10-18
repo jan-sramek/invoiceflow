@@ -103,6 +103,9 @@ jobs:
           - image: Keycloak
             dockerfile: deploy/images/keycloak/Dockerfile
             context: deploy/images/keycloak
+          - image: Web
+            dockerfile: web/invoiceflow-web/Dockerfile
+            context: web/invoiceflow-web
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
