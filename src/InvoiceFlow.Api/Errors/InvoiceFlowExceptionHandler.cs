@@ -58,6 +58,8 @@ internal sealed partial class InvoiceFlowExceptionHandler(
         ErrorKind.Forbidden => StatusCodes.Status403Forbidden,
         ErrorKind.PreconditionFailed => StatusCodes.Status412PreconditionFailed,
         ErrorKind.PreconditionRequired => StatusCodes.Status428PreconditionRequired,
+        ErrorKind.TooLarge => StatusCodes.Status413PayloadTooLarge,
+        ErrorKind.UnsupportedMediaType => StatusCodes.Status415UnsupportedMediaType,
         ErrorKind.Unavailable => StatusCodes.Status503ServiceUnavailable,
         _ => StatusCodes.Status500InternalServerError,
     };

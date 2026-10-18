@@ -167,7 +167,7 @@ public sealed class InvoiceLifecycleTests(PostgresFixture database) : InvoiceApi
 
     private static Invoice PendingApproval()
     {
-        var invoice = Invoice.Upload(Clerk, Start);
+        var invoice = Invoice.Upload(Clerk, Start, TestDocuments.New());
         invoice.EnterManually(Clerk, Start.AddMinutes(1));
         invoice.UpdateFields(Clerk, Start.AddMinutes(2), new InvoiceFields
         {

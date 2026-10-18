@@ -259,6 +259,63 @@ namespace InvoiceFlow.Infrastructure.Persistence.Tenant.Migrations
 
                     b.ToTable("tenant_settings", (string)null);
                 });
+
+            modelBuilder.Entity("InvoiceFlow.Domain.Invoices.Invoice", b =>
+                {
+                    b.OwnsOne("InvoiceFlow.Domain.Invoices.InvoiceDocument", "Document", b1 =>
+                        {
+                            b1.Property<Guid>("InvoiceId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("invoice_id");
+
+                            b1.Property<string>("FileName")
+                                .IsRequired()
+                                .HasMaxLength(255)
+                                .HasColumnType("character varying(255)")
+                                .HasColumnName("file_name");
+
+                            b1.Property<Guid>("Id")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
+
+                            b1.Property<string>("Sha256")
+                                .IsRequired()
+                                .HasMaxLength(64)
+                                .HasColumnType("character(64)")
+                                .HasColumnName("sha256")
+                                .IsFixedLength();
+
+                            b1.Property<long>("SizeBytes")
+                                .HasColumnType("bigint")
+                                .HasColumnName("size_bytes");
+
+                            b1.Property<string>("StorageKey")
+                                .IsRequired()
+                                .HasMaxLength(256)
+                                .HasColumnType("character varying(256)")
+                                .HasColumnName("storage_key");
+
+                            b1.Property<Guid>("TenantId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("tenant_id");
+
+                            b1.HasKey("InvoiceId")
+                                .HasName("pk_invoice_documents");
+
+                            b1.HasIndex("Id")
+                                .IsUnique()
+                                .HasDatabaseName("ix_invoice_documents_id");
+
+                            b1.ToTable("invoice_documents", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("InvoiceId")
+                                .HasConstraintName("fk_invoice_documents_invoices_id");
+                        });
+
+                    b.Navigation("Document")
+                        .IsRequired();
+                });
 #pragma warning restore 612, 618
         }
     }

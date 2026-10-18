@@ -10,5 +10,7 @@ public enum ErrorKind
     Forbidden,
     PreconditionFailed,
     PreconditionRequired,
+    TooLarge,
+    UnsupportedMediaType,
     Unavailable,
 }

@@ -28,11 +28,11 @@ Codes are `area.reason` in lower snake case. A released code keeps its meaning; 
 
 | Code | Status | Meaning | Params | What to do |
 | --- | --- | --- | --- | --- |
-| <a id="request.malformed"></a>`request.malformed` | 400 | The body is missing or is not valid JSON. | | Fix the request body. |
+| <a id="request.malformed"></a>`request.malformed` | 400 | The body is missing, is not valid JSON or is a broken multipart form. | | Fix the request body. |
 | <a id="request.invalid"></a>`request.invalid` | 4xx | The request was refused for a reason with no specific code. | | Check the method, headers and URL. |
 | <a id="request.not_found"></a>`request.not_found` | 404 | No endpoint exists at this URL. | | Check the URL. |
 | <a id="request.method_not_allowed"></a>`request.method_not_allowed` | 405 | The endpoint exists but not for this method. | | Use a method listed in `Allow`. |
-| <a id="request.unsupported_media_type"></a>`request.unsupported_media_type` | 415 | The body has a content type the endpoint does not accept. | | Send `application/json`. |
+| <a id="request.unsupported_media_type"></a>`request.unsupported_media_type` | 415 | The body has a content type the endpoint does not accept. | | Send `application/json`, or `multipart/form-data` for uploads. |
 
 ## Validation
 
@@ -65,6 +65,8 @@ A status of *field* means the code appears only inside `errors`.
 | <a id="invoice.not_ready_for_submission"></a>`invoice.not_ready_for_submission` | 422 | Fields needed for submission are missing or inconsistent; `errors` lists them. | | Complete the fields in `errors`, then submit again. |
 | <a id="invoice.payment_date_in_future"></a>`invoice.payment_date_in_future` | 422 | The payment date is later than today. | | Enter the date the payment was made. |
 | <a id="approval.own_invoice"></a>`approval.own_invoice` | 403 | Nobody may approve or reject an invoice they submitted. | | Ask another approver. |
+| <a id="upload.too_large"></a>`upload.too_large` | 413 | The file is larger than allowed. | `maxBytes` | Upload a file of at most `maxBytes` bytes. |
+| <a id="upload.not_pdf"></a>`upload.not_pdf` | 415 | The file is not a PDF, whatever its name says. | | Upload the invoice as a PDF. |
 
 ## Access
 
@@ -79,4 +81,5 @@ A status of *field* means the code appears only inside `errors`.
 | <a id="concurrency.if_match_required"></a>`concurrency.if_match_required` | 428 | A write came without the `ETag` of the version it changes. | | Send the `ETag` from the last read as `If-Match`. |
 | <a id="concurrency.stale_version"></a>`concurrency.stale_version` | 412 | Someone changed the resource after you read it. | | Reload, reapply your change and retry. |
 | <a id="tenant.unavailable"></a>`tenant.unavailable` | 503 | Your organisation's data store is not reachable. | | Retry after `Retry-After` seconds. |
+| <a id="storage.unavailable"></a>`storage.unavailable` | 503 | Documents cannot be stored or read right now. Nothing was changed. | | Retry after `Retry-After` seconds. |
 | <a id="server.unexpected"></a>`server.unexpected` | 500 | An unexpected error occurred. | | Report it with the `traceId`. |

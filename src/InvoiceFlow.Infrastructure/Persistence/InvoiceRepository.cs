@@ -3,6 +3,7 @@ using InvoiceFlow.Application.Errors;
 using InvoiceFlow.Domain.Invoices;
 using InvoiceFlow.Infrastructure.Persistence.Tenant;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace InvoiceFlow.Infrastructure.Persistence;
 
@@ -26,6 +27,11 @@ internal sealed class InvoiceRepository(TenantDbContext dbContext) : IInvoiceRep
             : throw new ConcurrencyException();
     }
 
-    public void Add(Invoice invoice) =>
-        dbContext.Invoices.Add(invoice).Property(TenantDbContext.TenantIdProperty).CurrentValue = dbContext.TenantId;
+    public void Add(Invoice invoice)
+    {
+        EntityEntry<Invoice> entry = dbContext.Invoices.Add(invoice);
+        entry.Property(TenantDbContext.TenantIdProperty).CurrentValue = dbContext.TenantId;
+        entry.Reference(i => i.Document).TargetEntry!.Property(TenantDbContext.TenantIdProperty).CurrentValue =
+            dbContext.TenantId;
+    }
 }

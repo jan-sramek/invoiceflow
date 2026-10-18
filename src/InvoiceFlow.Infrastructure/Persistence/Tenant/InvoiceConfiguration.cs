@@ -9,6 +9,8 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
 {
     public const string VersionProperty = "Version";
 
+    private const string DocumentInvoiceIdProperty = "InvoiceId";
+
     public void Configure(EntityTypeBuilder<Invoice> builder)
     {
         builder.ToTable("invoices");
@@ -37,6 +39,22 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(i => i.UploadedAt);
         builder.ComplexProperty(i => i.SubmittedBy, ActorMapping.Configure);
         builder.Property(i => i.PaymentReference).HasMaxLength(Invoice.MaxPaymentReferenceLength);
+
+        builder.OwnsOne(i => i.Document, document =>
+        {
+            document.ToTable("invoice_documents");
+            document.WithOwner().HasForeignKey(DocumentInvoiceIdProperty);
+            document.HasKey(DocumentInvoiceIdProperty);
+            document.Property<InvoiceId>(DocumentInvoiceIdProperty).HasColumnName("invoice_id");
+            document.Property<TenantId>(TenantDbContext.TenantIdProperty);
+            document.Property(d => d.Id).HasColumnName("id").ValueGeneratedNever();
+            document.HasIndex(d => d.Id).IsUnique();
+            document.Property(d => d.StorageKey).HasMaxLength(256);
+            document.Property(d => d.FileName).HasMaxLength(InvoiceDocument.MaxFileNameLength);
+            document.Property(d => d.SizeBytes);
+            document.Property(d => d.Sha256).HasMaxLength(InvoiceDocument.Sha256Length).IsFixedLength();
+        });
+        builder.Navigation(i => i.Document).IsRequired();
 
         // Maps to PostgreSQL's xmin system column, which changes on every update.
         builder.Property<uint>(VersionProperty).IsRowVersion();

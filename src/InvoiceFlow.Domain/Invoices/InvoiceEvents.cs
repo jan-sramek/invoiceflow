@@ -2,7 +2,11 @@ using InvoiceFlow.Domain.Common;
 
 namespace InvoiceFlow.Domain.Invoices;
 
-public sealed record InvoiceUploaded(InvoiceId InvoiceId, Actor Actor, DateTimeOffset OccurredAt) : IDomainEvent;
+public sealed record InvoiceUploaded(InvoiceId InvoiceId, Actor Actor, DateTimeOffset OccurredAt, string FileName)
+    : IDomainEvent;
+
+public sealed record InvoiceDocumentDownloaded(InvoiceId InvoiceId, Actor Actor, DateTimeOffset OccurredAt)
+    : IDomainEvent;
 
 public sealed record InvoiceFieldsCorrected(
     InvoiceId InvoiceId, Actor Actor, DateTimeOffset OccurredAt, IReadOnlyList<FieldChange> Changes) : IDomainEvent;

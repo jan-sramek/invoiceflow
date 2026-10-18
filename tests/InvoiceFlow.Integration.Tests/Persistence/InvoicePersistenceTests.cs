@@ -63,7 +63,7 @@ public sealed class InvoicePersistenceTests(PostgresFixture database) : IAsyncLi
     [Fact]
     public async Task Commit_NewInvoice_LoadsWithoutOptionalValues()
     {
-        var invoice = Invoice.Upload(Clerk, Start);
+        var invoice = Invoice.Upload(Clerk, Start, TestDocuments.New());
         await AddAsync(invoice);
 
         Invoice? loaded = await GetAsync(invoice.Id);
@@ -75,9 +75,24 @@ public sealed class InvoicePersistenceTests(PostgresFixture database) : IAsyncLi
     }
 
     [Fact]
+    public async Task Commit_NewInvoice_StoresItsDocumentForTheTenant()
+    {
+        InvoiceDocument document = TestDocuments.New("Faktura 117.pdf");
+        var invoice = Invoice.Upload(Clerk, Start, document);
+        await AddAsync(invoice);
+
+        (await GetAsync(invoice.Id)).ShouldNotBeNull().Document.ShouldBeEquivalentTo(document);
+        await using var dataSource = NpgsqlDataSource.Create(database.ConnectionString(_testTenant.Database));
+        await using NpgsqlCommand command =
+            dataSource.CreateCommand("SELECT tenant_id FROM invoice_documents WHERE invoice_id = $1");
+        command.Parameters.Add(new NpgsqlParameter { Value = invoice.Id.Value });
+        (await command.ExecuteScalarAsync(CancellationToken)).ShouldBe(Tenant.Value);
+    }
+
+    [Fact]
     public async Task Commit_ChangedInvoice_SavesChanges()
     {
-        var invoice = Invoice.Upload(Clerk, Start);
+        var invoice = Invoice.Upload(Clerk, Start, TestDocuments.New());
         invoice.EnterManually(Clerk, Start);
         invoice.UpdateFields(Clerk, Start, Fields);
         await AddAsync(invoice);
@@ -96,7 +111,7 @@ public sealed class InvoicePersistenceTests(PostgresFixture database) : IAsyncLi
     [Fact]
     public async Task Commit_ClearsDomainEvents()
     {
-        var invoice = Invoice.Upload(Clerk, Start);
+        var invoice = Invoice.Upload(Clerk, Start, TestDocuments.New());
 
         await AddAsync(invoice);
 
@@ -131,7 +146,7 @@ public sealed class InvoicePersistenceTests(PostgresFixture database) : IAsyncLi
     public async Task Commit_WithinTrace_StoresTraceIdAsCorrelationId()
     {
         using Activity activity = new Activity("test").Start();
-        var invoice = Invoice.Upload(Clerk, Start);
+        var invoice = Invoice.Upload(Clerk, Start, TestDocuments.New());
 
         await AddAsync(invoice);
 
@@ -141,7 +156,7 @@ public sealed class InvoicePersistenceTests(PostgresFixture database) : IAsyncLi
     [Fact]
     public async Task Commit_ReasonOfRejection_IsStored()
     {
-        var invoice = Invoice.Upload(Clerk, Start);
+        var invoice = Invoice.Upload(Clerk, Start, TestDocuments.New());
         invoice.EnterManually(Clerk, Start);
         invoice.UpdateFields(Clerk, Start, Fields);
         invoice.Submit(Clerk, Start.AddMinutes(1));
@@ -155,7 +170,7 @@ public sealed class InvoicePersistenceTests(PostgresFixture database) : IAsyncLi
     [Fact]
     public async Task Commit_InvoiceChangedMeanwhile_ThrowsAndWritesNoAudit()
     {
-        var invoice = Invoice.Upload(Clerk, Start);
+        var invoice = Invoice.Upload(Clerk, Start, TestDocuments.New());
         invoice.EnterManually(Clerk, Start);
         invoice.UpdateFields(Clerk, Start, Fields);
         await AddAsync(invoice);
@@ -179,7 +194,7 @@ public sealed class InvoicePersistenceTests(PostgresFixture database) : IAsyncLi
     [Fact]
     public async Task Get_InvoiceOfAnotherTenant_ReturnsNothing()
     {
-        var invoice = Invoice.Upload(Clerk, Start);
+        var invoice = Invoice.Upload(Clerk, Start, TestDocuments.New());
         await AddAsync(invoice);
 
         await using AsyncServiceScope otherTenant = database.OpenScope((await database.CreateTenantAsync()).Id);
@@ -191,7 +206,7 @@ public sealed class InvoicePersistenceTests(PostgresFixture database) : IAsyncLi
 
     private static Invoice PaidInvoice()
     {
-        var invoice = Invoice.Upload(Clerk, Start);
+        var invoice = Invoice.Upload(Clerk, Start, TestDocuments.New());
         invoice.EnterManually(Clerk, Start.AddMinutes(1));
         invoice.UpdateFields(Clerk, Start.AddMinutes(2), Fields);
         invoice.Submit(Clerk, Start.AddMinutes(3));

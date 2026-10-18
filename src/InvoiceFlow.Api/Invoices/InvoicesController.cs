@@ -4,6 +4,7 @@ using InvoiceFlow.Application.Common;
 using InvoiceFlow.Application.Invoices;
 using InvoiceFlow.Application.Invoices.Approve;
 using InvoiceFlow.Application.Invoices.Cancel;
+using InvoiceFlow.Application.Invoices.DownloadDocument;
 using InvoiceFlow.Application.Invoices.EnterManually;
 using InvoiceFlow.Application.Invoices.GetInvoice;
 using InvoiceFlow.Application.Invoices.ListInvoices;
@@ -12,6 +13,7 @@ using InvoiceFlow.Application.Invoices.Reject;
 using InvoiceFlow.Application.Invoices.Reopen;
 using InvoiceFlow.Application.Invoices.Submit;
 using InvoiceFlow.Application.Invoices.UpdateFields;
+using InvoiceFlow.Application.Invoices.Upload;
 using InvoiceFlow.Domain.Invoices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -30,6 +32,8 @@ namespace InvoiceFlow.Api.Invoices;
 public sealed class InvoicesController(IQueryHandler<GetInvoiceQuery, Versioned<InvoiceDetailDto>> getInvoice)
     : ControllerBase
 {
+    private const string PdfContentType = "application/pdf";
+
     /// <summary>
     /// Pages through the tenant's invoices, newest upload first unless <c>sort</c> says otherwise.
     /// </summary>
@@ -42,10 +46,51 @@ public sealed class InvoicesController(IQueryHandler<GetInvoiceQuery, Versioned<
         CancellationToken cancellationToken) =>
         handler.HandleAsync(request.ToQuery(), cancellationToken);
 
+    /// <summary>
+    /// Uploads one PDF as a new invoice. Whether it is a PDF is decided by its content, not its name or type.
+    /// </summary>
+    [HttpPost]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    [UploadForm(UploadInvoiceCommand.MaxBytes)]
+    [ProducesResponseType<InvoiceDetailDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status413PayloadTooLarge, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status415UnsupportedMediaType, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable, "application/problem+json")]
+    public async Task<ActionResult<InvoiceDetailDto>> Upload(
+        IFormFile? file,
+        [FromServices] ICommandHandler<UploadInvoiceCommand, InvoiceId> handler,
+        CancellationToken cancellationToken)
+    {
+        await using Stream? content = file?.OpenReadStream();
+        InvoiceId id = await handler.HandleAsync(new UploadInvoiceCommand(content, file?.FileName), cancellationToken);
+        InvoiceDetailDto invoice = await DetailAsync(id, cancellationToken);
+        return CreatedAtAction(nameof(Get), new { id = id.Value }, invoice);
+    }
+
     [HttpGet("{id:guid}")]
     [ProducesResponseType<InvoiceDetailDto>(StatusCodes.Status200OK)]
     public Task<InvoiceDetailDto> Get(Guid id, CancellationToken cancellationToken) =>
         DetailAsync(new InvoiceId(id), cancellationToken);
+
+    /// <summary>
+    /// Returns the uploaded PDF as an attachment. Every download is recorded in the invoice's history.
+    /// </summary>
+    [HttpGet("{id:guid}/document")]
+    [Authorize]
+    [ProducesResponseType<Stream>(StatusCodes.Status200OK, PdfContentType)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status503ServiceUnavailable, "application/problem+json")]
+    public async Task<FileStreamResult> Download(
+        Guid id,
+        [FromServices] ICommandHandler<DownloadDocumentCommand, DocumentContent> handler,
+        CancellationToken cancellationToken)
+    {
+        DocumentContent document = await handler.HandleAsync(new DownloadDocumentCommand(new InvoiceId(id)), cancellationToken);
+        Response.ContentLength = document.SizeBytes;
+        Response.Headers.XContentTypeOptions = "nosniff";
+        return File(document.Content, PdfContentType, document.FileName);
+    }
 
     /// <summary>
     /// Replaces all editable fields; a missing or blank value clears the field.

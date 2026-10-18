@@ -49,14 +49,16 @@ public sealed class Invoice : AggregateRoot
     private Invoice()
     {
         UploadedBy = null!;
+        Document = null!;
     }
 
-    private Invoice(InvoiceId id, Actor uploadedBy, DateTimeOffset uploadedAt)
+    private Invoice(InvoiceId id, Actor uploadedBy, DateTimeOffset uploadedAt, InvoiceDocument document)
     {
         Id = id;
         Status = InvoiceStatus.Uploaded;
         UploadedBy = uploadedBy;
         UploadedAt = uploadedAt;
+        Document = document;
     }
 
     public InvoiceId Id { get; }
@@ -67,6 +69,8 @@ public sealed class Invoice : AggregateRoot
 
     public DateTimeOffset UploadedAt { get; }
 
+    public InvoiceDocument Document { get; }
+
     public InvoiceFields Fields { get; private set; } = InvoiceFields.Empty;
 
     public Actor? SubmittedBy { get; private set; }
@@ -75,12 +79,18 @@ public sealed class Invoice : AggregateRoot
 
     public string? PaymentReference { get; private set; }
 
-    public static Invoice Upload(Actor uploadedBy, DateTimeOffset now)
+    public static Invoice Upload(Actor uploadedBy, DateTimeOffset now, InvoiceDocument document)
     {
-        var invoice = new Invoice(InvoiceId.New(now), uploadedBy, now);
-        invoice.Raise(new InvoiceUploaded(invoice.Id, uploadedBy, now));
+        var invoice = new Invoice(InvoiceId.New(now), uploadedBy, now, document);
+        invoice.Raise(new InvoiceUploaded(invoice.Id, uploadedBy, now, document.FileName));
         return invoice;
     }
+
+    /// <summary>
+    /// Downloads change nothing, but who read the document and when is part of the invoice's history.
+    /// </summary>
+    public void RecordDownload(Actor actor, DateTimeOffset now) =>
+        Raise(new InvoiceDocumentDownloaded(Id, actor, now));
 
     public void StartProcessing(Actor actor, DateTimeOffset now)
     {

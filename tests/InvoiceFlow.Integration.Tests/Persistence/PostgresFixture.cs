@@ -70,6 +70,9 @@ public sealed class PostgresFixture : IAsyncLifetime
                 [$"ConnectionStrings:{InfrastructureServiceCollectionExtensions.CatalogConnectionStringName}"] =
                     ConnectionString(CatalogDatabase),
                 [$"{TenancyOptions.SectionName}:{nameof(TenancyOptions.CredentialsPath)}"] = _credentials.FullName,
+                ["DocumentStorage:ServiceUrl"] = "http://127.0.0.1:1",
+                ["DocumentStorage:AccessKey"] = "test",
+                ["DocumentStorage:SecretKey"] = "test",
             })
             .Build();
 

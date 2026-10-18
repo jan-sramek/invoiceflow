@@ -19,4 +19,5 @@ public static class AuditActions
     public const string InvoiceReopened = "invoice.reopened";
     public const string InvoicePaid = "invoice.paid";
     public const string InvoiceCancelled = "invoice.cancelled";
+    public const string InvoiceDocumentDownloaded = "invoice.document_downloaded";
 }

@@ -15,6 +15,9 @@ internal static class TestInvoices
     public static readonly Actor Approver = Actor.User("approver-1", "Adam Approver");
     public static readonly Actor Worker = Actor.System("invoiceflow-worker");
 
+    public static readonly InvoiceDocument Document = InvoiceDocument.Create(
+        Guid.CreateVersion7(Now), "tenants/t/documents/d", "FV-2026-0117.pdf", 48_213, new string('a', 64));
+
     public static readonly InvoiceFields ValidFields = new()
     {
         SupplierName = SupplierName.Create("Acme s.r.o."),
@@ -54,7 +57,7 @@ internal static class TestInvoices
     /// </summary>
     public static Invoice InStatus(InvoiceStatus status)
     {
-        var invoice = Invoice.Upload(Clerk, Now);
+        var invoice = Invoice.Upload(Clerk, Now, Document);
 
         foreach (InvoiceAction action in PathFromUploaded[status])
         {

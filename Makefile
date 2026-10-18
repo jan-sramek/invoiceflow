@@ -193,6 +193,7 @@ seaweedfs-up: doctor ## Install SeaweedFS (S3 storage) in the infra namespace
 seaweedfs-down: doctor ## Remove SeaweedFS, including stored documents and credentials
 	@$(KUBECTL) delete -f deploy/kubernetes/seaweedfs/ --ignore-not-found
 	@$(KUBECTL) delete pvc/data-seaweedfs-0 secret/seaweedfs-s3 --namespace $(INFRA_NS) --ignore-not-found
+	@$(KUBECTL) delete secret/seaweedfs-s3 --namespace $(APP_NS) --ignore-not-found
 
 s3-credentials: ## Print the S3 access key and secret key
 	@echo "access key: $$($(KUBECTL) get secret seaweedfs-s3 --namespace $(INFRA_NS) -o jsonpath='{.data.access-key}' | base64 -d)"
@@ -214,7 +215,7 @@ images: doctor ## Build the API, worker and migrator images and push them to the
 	done
 
 app-up: images db-migrate ## Build the images, migrate the databases and deploy the API and worker
-	@$(KUBECTL) apply -f deploy/kubernetes/namespace.yaml
+	@./scripts/create-local-secrets.sh
 	@for manifest in deploy/kubernetes/app/*.yaml; do \
 		sed -e 's/$${IMAGE_TAG}/$(IMAGE_TAG)/g' -e 's/$${DEVELOPMENT_TENANT_ID}/$(DEVELOPMENT_TENANT_ID)/g' $$manifest; echo ---; \
 	done | $(KUBECTL) apply -f -

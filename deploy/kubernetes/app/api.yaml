@@ -52,6 +52,18 @@ spec:
                   key: password
             - name: ConnectionStrings__Catalog
               value: Host=postgres.invoiceflow-infra.svc.cluster.local;Database=invoiceflow_catalog;Username=catalog_app;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
+            - name: DocumentStorage__ServiceUrl
+              value: http://seaweedfs.invoiceflow-infra.svc.cluster.local:8333
+            - name: DocumentStorage__AccessKey
+              valueFrom:
+                secretKeyRef:
+                  name: seaweedfs-s3
+                  key: access-key
+            - name: DocumentStorage__SecretKey
+              valueFrom:
+                secretKeyRef:
+                  name: seaweedfs-s3
+                  key: secret-key
             # make app-up fills in the id; tenants come from access tokens in Stage 4
             - name: Tenancy__DevelopmentTenantId
               value: "${DEVELOPMENT_TENANT_ID}"

@@ -9,6 +9,7 @@ public sealed record InvoiceDetailDto(
     InvoiceFieldsDto Fields,
     ActorDto UploadedBy,
     DateTimeOffset UploadedAt,
+    DocumentDto Document,
     ActorDto? SubmittedBy,
     DateOnly? PaidOn,
     string? PaymentReference);
@@ -26,5 +27,7 @@ public sealed record InvoiceFieldsDto(
     decimal? TaxAmount,
     decimal? TotalAmount,
     string? PurchaseOrderReference);
+
+public sealed record DocumentDto(string FileName, long SizeBytes);
 
 public sealed record ActorDto(ActorType Type, string Id, string Name);

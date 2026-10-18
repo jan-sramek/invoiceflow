@@ -5,4 +5,5 @@ internal static class LogEventIds
 {
     public const int UseCaseCompleted = 300;
     public const int UseCaseRejected = 301;
+    public const int CompensationFailed = 302;
 }

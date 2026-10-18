@@ -41,6 +41,24 @@ public static class ApplicationErrors
         public const string NotFound = "invoice.not_found";
     }
 
+    public static class Upload
+    {
+        [Description("File too large")]
+        public const string TooLarge = "upload.too_large";
+
+        /// <summary>
+        /// Decided by the file's first bytes, never by its name or the declared content type.
+        /// </summary>
+        [Description("Not a PDF")]
+        public const string NotPdf = "upload.not_pdf";
+    }
+
+    public static class Storage
+    {
+        [Description("Document storage unavailable")]
+        public const string Unavailable = "storage.unavailable";
+    }
+
     public static class Concurrency
     {
         [Description("Changed by someone else")]

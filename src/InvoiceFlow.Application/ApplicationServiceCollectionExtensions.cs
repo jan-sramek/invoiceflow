@@ -28,6 +28,7 @@ public static class ApplicationServiceCollectionExtensions
             .WithScopedLifetime());
         services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
         services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped<Compensations>();
 
         // Each Decorate wraps the previous one, so the last registered runs first.
         services.TryDecorate(typeof(ICommandHandler<,>), typeof(UnitOfWorkCommandDecorator<,>));

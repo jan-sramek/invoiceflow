@@ -10,25 +10,41 @@ public class InvoiceTests
     [Fact]
     public void Upload_NewInvoice_IsUploadedAndRaisesUploaded()
     {
-        var invoice = Invoice.Upload(Clerk, Now);
+        var invoice = Invoice.Upload(Clerk, Now, Document);
 
         invoice.Status.ShouldBe(InvoiceStatus.Uploaded);
         invoice.UploadedBy.ShouldBe(Clerk);
         invoice.UploadedAt.ShouldBe(Now);
+        invoice.Document.ShouldBe(Document);
         invoice.Id.Value.Version.ShouldBe(7);
-        invoice.DomainEvents.ShouldHaveSingleItem().ShouldBe(new InvoiceUploaded(invoice.Id, Clerk, Now));
+        invoice.DomainEvents.ShouldHaveSingleItem()
+            .ShouldBe(new InvoiceUploaded(invoice.Id, Clerk, Now, "FV-2026-0117.pdf"));
     }
 
     [Fact]
     public void Upload_TwoInvoices_GetDifferentIds()
     {
-        Invoice.Upload(Clerk, Now).Id.ShouldNotBe(Invoice.Upload(Clerk, Now).Id);
+        Invoice.Upload(Clerk, Now, Document).Id.ShouldNotBe(Invoice.Upload(Clerk, Now, Document).Id);
     }
 
     [Fact]
     public void Upload_NewInvoice_HasNoFields()
     {
-        Invoice.Upload(Clerk, Now).Fields.ShouldBe(InvoiceFields.Empty);
+        Invoice.Upload(Clerk, Now, Document).Fields.ShouldBe(InvoiceFields.Empty);
+    }
+
+    [Theory]
+    [InlineData(InvoiceStatus.Uploaded)]
+    [InlineData(InvoiceStatus.Paid)]
+    [InlineData(InvoiceStatus.Cancelled)]
+    public void RecordDownload_InAnyStatus_RaisesDownloadedWithoutChangingTheInvoice(InvoiceStatus status)
+    {
+        Invoice invoice = InStatus(status);
+
+        invoice.RecordDownload(Approver, Now);
+
+        invoice.Status.ShouldBe(status);
+        invoice.DomainEvents.ShouldHaveSingleItem().ShouldBe(new InvoiceDocumentDownloaded(invoice.Id, Approver, Now));
     }
 
     [Fact]
@@ -118,7 +134,7 @@ public class InvoiceTests
     [Fact]
     public void ClearDomainEvents_RemovesRaisedEvents()
     {
-        var invoice = Invoice.Upload(Clerk, Now);
+        var invoice = Invoice.Upload(Clerk, Now, Document);
 
         invoice.ClearDomainEvents();
 

@@ -49,6 +49,8 @@ public sealed class InvoiceDetailTests(PostgresFixture database) : IAsyncLifetim
         body.GetProperty("uploadedBy").GetProperty("name").GetString().ShouldBe("Clara Clerk");
         body.GetProperty("uploadedBy").GetProperty("type").GetString().ShouldBe("User");
         body.GetProperty("uploadedAt").GetDateTimeOffset().ShouldBe(Start);
+        body.GetProperty("document").GetProperty("fileName").GetString().ShouldBe("FV-2026-0117.pdf");
+        body.GetProperty("document").GetProperty("sizeBytes").GetInt64().ShouldBe(48_213);
         body.GetProperty("submittedBy").GetProperty("id").GetString().ShouldBe("clerk-1");
         body.GetProperty("paidOn").GetString().ShouldBe("2026-10-12");
         body.GetProperty("paymentReference").GetString().ShouldBe("BANK-42");
@@ -68,7 +70,7 @@ public sealed class InvoiceDetailTests(PostgresFixture database) : IAsyncLifetim
     [Fact]
     public async Task Get_NewInvoice_ReturnsMissingValuesAsNull()
     {
-        var invoice = Invoice.Upload(Clerk, Start);
+        var invoice = Invoice.Upload(Clerk, Start, TestDocuments.New());
         await AddAsync(_tenant.Id, invoice);
 
         JsonElement body = await JsonAsync(await GetAsync(invoice.Id.Value));
@@ -83,7 +85,7 @@ public sealed class InvoiceDetailTests(PostgresFixture database) : IAsyncLifetim
     [Trait("Requirement", "FR-DET-03")]
     public async Task Get_ReturnsStrongETagThatChangesWithTheInvoice()
     {
-        var invoice = Invoice.Upload(Clerk, Start);
+        var invoice = Invoice.Upload(Clerk, Start, TestDocuments.New());
         await AddAsync(_tenant.Id, invoice);
 
         HttpResponseMessage before = await GetAsync(invoice.Id.Value);
@@ -99,7 +101,7 @@ public sealed class InvoiceDetailTests(PostgresFixture database) : IAsyncLifetim
     [Fact]
     public async Task Get_IsNeverCached()
     {
-        var invoice = Invoice.Upload(Clerk, Start);
+        var invoice = Invoice.Upload(Clerk, Start, TestDocuments.New());
         await AddAsync(_tenant.Id, invoice);
 
         HttpResponseMessage response = await GetAsync(invoice.Id.Value);
@@ -122,7 +124,7 @@ public sealed class InvoiceDetailTests(PostgresFixture database) : IAsyncLifetim
     public async Task Get_InvoiceOfAnotherTenant_LooksExactlyLikeUnknownId()
     {
         TestTenant other = await database.CreateTenantAsync();
-        var foreign = Invoice.Upload(Clerk, Start);
+        var foreign = Invoice.Upload(Clerk, Start, TestDocuments.New());
         await AddAsync(other.Id, foreign);
 
         JsonElement foreignProblem = await JsonAsync(await GetAsync(foreign.Id.Value));
@@ -143,7 +145,7 @@ public sealed class InvoiceDetailTests(PostgresFixture database) : IAsyncLifetim
 
     private static Invoice PaidInvoice()
     {
-        var invoice = Invoice.Upload(Clerk, Start);
+        var invoice = Invoice.Upload(Clerk, Start, TestDocuments.New());
         invoice.EnterManually(Clerk, Start.AddMinutes(1));
         invoice.UpdateFields(Clerk, Start.AddMinutes(2), new InvoiceFields
         {

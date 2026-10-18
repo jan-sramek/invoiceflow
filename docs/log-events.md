@@ -24,6 +24,7 @@ New areas get the next free thousand.
 | 200 | UnexpectedError | Error | Api | exception |
 | 300 | UseCaseCompleted | Debug | Application | `UseCase`, `Duration` |
 | 301 | UseCaseRejected | Information | Application | `UseCase`, `ErrorCode`, `Duration` |
+| 302 | CompensationFailed | Warning | Application | exception |
 
 ## Framework events we rely on
 

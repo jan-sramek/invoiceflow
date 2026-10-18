@@ -77,7 +77,7 @@ public sealed class InvoiceWriteTests(PostgresFixture database) : InvoiceApiTest
     [Fact]
     public async Task UpdateFields_InStatusThatForbidsEdits_ReturnsInvalidTransition()
     {
-        (InvoiceId id, EntityTagHeaderValue etag) = await SeedAsync(Invoice.Upload(Uploader, Start));
+        (InvoiceId id, EntityTagHeaderValue etag) = await SeedAsync(Invoice.Upload(Uploader, Start, TestDocuments.New()));
 
         JsonElement problem = await JsonAsync(await UpdateFieldsAsync(id, etag, CompleteFields));
 
@@ -89,7 +89,7 @@ public sealed class InvoiceWriteTests(PostgresFixture database) : InvoiceApiTest
     [Trait("Requirement", "FR-EXT-06")]
     public async Task EnterManually_MovesUploadedInvoiceToReview()
     {
-        (InvoiceId id, EntityTagHeaderValue etag) = await SeedAsync(Invoice.Upload(Uploader, Start));
+        (InvoiceId id, EntityTagHeaderValue etag) = await SeedAsync(Invoice.Upload(Uploader, Start, TestDocuments.New()));
 
         HttpResponseMessage response = await PostAsync(id, "enter-manually", etag);
 
@@ -133,7 +133,7 @@ public sealed class InvoiceWriteTests(PostgresFixture database) : InvoiceApiTest
     [Fact]
     public async Task Write_WithoutIfMatch_ReturnsPreconditionRequired()
     {
-        (InvoiceId id, _) = await SeedAsync(Invoice.Upload(Uploader, Start));
+        (InvoiceId id, _) = await SeedAsync(Invoice.Upload(Uploader, Start, TestDocuments.New()));
 
         HttpResponseMessage response = await PostAsync(id, "enter-manually", etag: null);
         JsonElement problem = await JsonAsync(response);
@@ -177,7 +177,7 @@ public sealed class InvoiceWriteTests(PostgresFixture database) : InvoiceApiTest
     [Fact]
     public async Task Write_WithoutUser_ReturnsUserRequired()
     {
-        (InvoiceId id, EntityTagHeaderValue etag) = await SeedAsync(Invoice.Upload(Uploader, Start));
+        (InvoiceId id, EntityTagHeaderValue etag) = await SeedAsync(Invoice.Upload(Uploader, Start, TestDocuments.New()));
 
         HttpResponseMessage response = await PostAsync(id, "enter-manually", etag, persona: null);
 
@@ -191,7 +191,7 @@ public sealed class InvoiceWriteTests(PostgresFixture database) : InvoiceApiTest
     public async Task Write_InvoiceOfAnotherTenant_ReturnsNotFound()
     {
         TestTenant other = await Database.CreateTenantAsync();
-        var foreign = Invoice.Upload(Uploader, Start);
+        var foreign = Invoice.Upload(Uploader, Start, TestDocuments.New());
         await AddAsync(other.Id, foreign);
 
         HttpResponseMessage response = await PostAsync(foreign.Id, "enter-manually", new EntityTagHeaderValue("\"1\""));
@@ -202,7 +202,7 @@ public sealed class InvoiceWriteTests(PostgresFixture database) : InvoiceApiTest
 
     private async Task<(InvoiceId Id, EntityTagHeaderValue ETag)> InvoiceInReviewAsync()
     {
-        var invoice = Invoice.Upload(Uploader, Start);
+        var invoice = Invoice.Upload(Uploader, Start, TestDocuments.New());
         invoice.EnterManually(Uploader, Start);
         return await SeedAsync(invoice);
     }

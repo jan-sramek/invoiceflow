@@ -37,7 +37,7 @@ public sealed class InvoiceListTests(PostgresFixture database) : InvoiceApiTests
     [Trait("Requirement", "FR-CAN-02")]
     public async Task List_StatusFilter_MatchesAnyGivenStatusIncludingCancelled()
     {
-        var uploaded = Invoice.Upload(Clerk, Start);
+        var uploaded = Invoice.Upload(Clerk, Start, TestDocuments.New());
         Invoice inReview = Draft(minute: 1);
         Invoice cancelled = Draft(minute: 2);
         cancelled.Cancel(Clerk, Start.AddMinutes(3), "Sent twice");
@@ -146,7 +146,7 @@ public sealed class InvoiceListTests(PostgresFixture database) : InvoiceApiTests
     {
         Invoice approved = Approved(Draft(minute: 1));
         Invoice inReview = Draft(minute: 2);
-        var uploaded = Invoice.Upload(Clerk, Start.AddMinutes(3));
+        var uploaded = Invoice.Upload(Clerk, Start.AddMinutes(3), TestDocuments.New());
         await SeedAllAsync(approved, inReview, uploaded);
 
         JsonElement body = await ListAsync("sort=status");
@@ -212,7 +212,7 @@ public sealed class InvoiceListTests(PostgresFixture database) : InvoiceApiTests
         DateOnly? dueDate = null)
     {
         DateTimeOffset at = Start.AddMinutes(minute);
-        var invoice = Invoice.Upload(Clerk, at);
+        var invoice = Invoice.Upload(Clerk, at, TestDocuments.New());
         invoice.EnterManually(Clerk, at);
         invoice.UpdateFields(Clerk, at, new InvoiceFields
         {

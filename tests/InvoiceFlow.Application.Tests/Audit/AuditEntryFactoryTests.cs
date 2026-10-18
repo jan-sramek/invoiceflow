@@ -13,6 +13,9 @@ public class AuditEntryFactoryTests
     private static readonly Actor Worker = Actor.System("invoiceflow-worker");
     private static readonly TenantId Tenant = new(Guid.NewGuid());
 
+    private static readonly InvoiceDocument Document = InvoiceDocument.Create(
+        Guid.CreateVersion7(), "tenants/t/documents/d", "FV-2026-0117.pdf", 48_213, new string('a', 64));
+
     private static readonly InvoiceFields Fields = new()
     {
         SupplierName = SupplierName.Create("Acme s.r.o."),
@@ -42,7 +45,7 @@ public class AuditEntryFactoryTests
     [Fact]
     public void Create_CopiesEventContext()
     {
-        var invoice = Invoice.Upload(Clerk, Now);
+        var invoice = Invoice.Upload(Clerk, Now, Document);
 
         AuditEntry entry = AuditEntryFactory.Create(invoice.DomainEvents[0], Tenant, "4bf92f3577b34da6a3ce929d0e0e4736");
 
@@ -53,7 +56,7 @@ public class AuditEntryFactoryTests
         entry.Action.ShouldBe(AuditActions.InvoiceUploaded);
         entry.SubjectType.ShouldBe(AuditEntryFactory.InvoiceSubject);
         entry.SubjectId.ShouldBe(invoice.Id.Value);
-        entry.Changes.ShouldBeEmpty();
+        entry.Changes.ShouldBe([new AuditChange("fileName", null, "FV-2026-0117.pdf")]);
         entry.Reason.ShouldBeNull();
         entry.CorrelationId.ShouldBe("4bf92f3577b34da6a3ce929d0e0e4736");
     }
@@ -108,7 +111,7 @@ public class AuditEntryFactoryTests
 
     private static Invoice InNeedsReview()
     {
-        var invoice = Invoice.Upload(Clerk, Now);
+        var invoice = Invoice.Upload(Clerk, Now, Document);
         invoice.EnterManually(Clerk, Now);
         invoice.UpdateFields(Clerk, Now, Fields);
         return invoice;
@@ -116,7 +119,7 @@ public class AuditEntryFactoryTests
 
     private static IDomainEvent[] EveryKindOfEvent()
     {
-        var main = Invoice.Upload(Clerk, Now);
+        var main = Invoice.Upload(Clerk, Now, Document);
         main.StartProcessing(Worker, Now);
         main.FailExtraction(Worker, Now, "No text layer");
         main.RetryExtraction(Clerk, Now);
@@ -128,13 +131,14 @@ public class AuditEntryFactoryTests
         main.Submit(Clerk, Now);
         main.Approve(Approver, Now);
         main.MarkPaid(Approver, Now, new DateOnly(2026, 10, 12), "BANK-42");
+        main.RecordDownload(Approver, Now);
 
-        var reviewed = Invoice.Upload(Clerk, Now);
+        var reviewed = Invoice.Upload(Clerk, Now, Document);
         reviewed.StartProcessing(Worker, Now);
         reviewed.RequireReview(Worker, Now);
         reviewed.Cancel(Clerk, Now, "Duplicate");
 
-        var manual = Invoice.Upload(Clerk, Now);
+        var manual = Invoice.Upload(Clerk, Now, Document);
         manual.EnterManually(Clerk, Now);
 
         return

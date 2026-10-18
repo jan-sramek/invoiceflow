@@ -2,6 +2,7 @@ using FluentValidation;
 using InvoiceFlow.Application.Abstractions.Context;
 using InvoiceFlow.Application.Abstractions.Messaging;
 using InvoiceFlow.Application.Abstractions.Persistence;
+using InvoiceFlow.Application.Abstractions.Storage;
 using InvoiceFlow.Application.Behaviors;
 using InvoiceFlow.Application.Common;
 using InvoiceFlow.Application.Errors;
@@ -9,6 +10,8 @@ using InvoiceFlow.Application.Invoices.GetInvoice;
 using InvoiceFlow.Application.Invoices.ListInvoices;
 using InvoiceFlow.Domain.Common;
 using InvoiceFlow.Domain.Invoices;
+using InvoiceFlow.Domain.Tenants;
+using InvoiceFlow.Testing.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
@@ -53,22 +56,23 @@ public class PipelineTests
     }
 
     [Fact]
-    public async Task Command_HandlerFails_DoesNotCommit()
+    public async Task Command_HandlerFails_CompensatesInsteadOfCommitting()
     {
         await using ServiceProvider services = Build();
 
         await Should.ThrowAsync<InvoiceNotFoundException>(() => HandleAsync(services, new TestCommand(-1, Fail: true)));
 
-        services.GetRequiredService<Calls>().ShouldBe(["validate", "handle"]);
+        services.GetRequiredService<Calls>().ShouldBe(["validate", "handle", "undo"]);
     }
 
     [Fact]
-    public async Task Command_CommitFails_IsLoggedAsRejected()
+    public async Task Command_CommitFails_CompensatesAndIsLoggedAsRejected()
     {
         await using ServiceProvider services = Build(failCommit: true);
 
         await Should.ThrowAsync<ConcurrencyException>(() => HandleAsync(services, new TestCommand(5)));
 
+        services.GetRequiredService<Calls>().ShouldBe(["validate", "handle", "commit", "undo"]);
         ShouldBeRejected(services, "concurrency.stale_version");
     }
 
@@ -101,6 +105,8 @@ public class PipelineTests
             .AddScoped<IUnitOfWork>(provider => new RecordingUnitOfWork(provider.GetRequiredService<Calls>(), failCommit))
             .AddScoped<IInvoiceReadService, NoInvoices>()
             .AddScoped<IInvoiceRepository, NoInvoices>()
+            .AddSingleton<IDocumentStorage, InMemoryDocumentStorage>()
+            .AddScoped<ITenantContext, FixedTenant>()
             .AddScoped<ICurrentUser, NoUser>()
             .AddScoped<ICommandHandler<TestCommand, int>, TestCommandHandler>()
             .AddScoped<IQueryHandler<TestQuery, int>, TestQueryHandler>()
@@ -126,11 +132,16 @@ public class PipelineTests
 
     public sealed record TestQuery(int Value) : IQuery<int>;
 
-    private sealed class TestCommandHandler(Calls calls) : ICommandHandler<TestCommand, int>
+    private sealed class TestCommandHandler(Calls calls, Compensations compensations) : ICommandHandler<TestCommand, int>
     {
         public Task<int> HandleAsync(TestCommand command, CancellationToken cancellationToken)
         {
             calls.Add("handle");
+            compensations.Add(() =>
+            {
+                calls.Add("undo");
+                return Task.CompletedTask;
+            });
             return command.Fail ? throw new InvoiceNotFoundException() : Task.FromResult(command.Value);
         }
     }
@@ -201,5 +212,10 @@ public class PipelineTests
     private sealed class NoUser : ICurrentUser
     {
         public Actor Actor => throw new UserRequiredException();
+    }
+
+    private sealed class FixedTenant : ITenantContext
+    {
+        public TenantId TenantId { get; } = new(Guid.CreateVersion7());
     }
 }

@@ -38,6 +38,7 @@ public class GetInvoiceHandlerTests
         new InvoiceFieldsDto(null, null, null, null, null, null, null, null, null),
         new ActorDto(ActorType.User, "clerk-1", "Clara Clerk"),
         DateTimeOffset.UnixEpoch,
+        new DocumentDto("invoice.pdf", 1024),
         null,
         null,
         null);

@@ -1,9 +1,11 @@
 using InvoiceFlow.Application.Abstractions.Context;
 using InvoiceFlow.Application.Abstractions.Persistence;
+using InvoiceFlow.Application.Abstractions.Storage;
 using InvoiceFlow.Infrastructure.Persistence;
 using InvoiceFlow.Infrastructure.Persistence.Catalog;
 using InvoiceFlow.Infrastructure.Persistence.SchemaMigration;
 using InvoiceFlow.Infrastructure.Persistence.Tenant;
+using InvoiceFlow.Infrastructure.Storage;
 using InvoiceFlow.Infrastructure.Tenancy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,6 +36,12 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
         services.AddScoped<IInvoiceReadService, InvoiceReadService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        services.AddOptions<DocumentStorageOptions>()
+            .Bind(configuration.GetSection(DocumentStorageOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddSingleton<IDocumentStorage, S3DocumentStorage>();
 
         return services;
     }

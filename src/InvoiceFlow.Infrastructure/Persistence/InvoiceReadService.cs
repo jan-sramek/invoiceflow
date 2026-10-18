@@ -37,6 +37,7 @@ internal sealed class InvoiceReadService(TenantDbContext dbContext) : IInvoiceRe
                         i.Fields.PurchaseOrderReference == null ? null : i.Fields.PurchaseOrderReference.Value),
                     new ActorDto(i.UploadedBy.Type, i.UploadedBy.Id, i.UploadedBy.Name),
                     i.UploadedAt,
+                    new DocumentDto(i.Document.FileName, i.Document.SizeBytes),
                     i.SubmittedBy == null ? null : new ActorDto(i.SubmittedBy.Type, i.SubmittedBy.Id, i.SubmittedBy.Name),
                     i.PaidOn,
                     i.PaymentReference),

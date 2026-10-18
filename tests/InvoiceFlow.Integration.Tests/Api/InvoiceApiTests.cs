@@ -5,6 +5,7 @@ using InvoiceFlow.Application.Abstractions.Persistence;
 using InvoiceFlow.Domain.Invoices;
 using InvoiceFlow.Domain.Tenants;
 using InvoiceFlow.Integration.Tests.Persistence;
+using InvoiceFlow.Testing.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace InvoiceFlow.Integration.Tests.Api;
@@ -21,6 +22,8 @@ public abstract class InvoiceApiTests(PostgresFixture database) : IAsyncLifetime
     protected TestTenant Tenant { get; private set; } = null!;
 
     protected HttpClient Client { get; private set; } = null!;
+
+    protected InMemoryDocumentStorage Storage => _api.Storage;
 
     protected static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 

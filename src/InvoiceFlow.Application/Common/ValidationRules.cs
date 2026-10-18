@@ -45,6 +45,16 @@ internal static class ValidationRules
             }
         });
 
+    public static void RequiredObject<T, TValue>(this IRuleBuilderInitial<T, TValue?> rule, string field)
+        where TValue : class =>
+        rule.Custom((value, context) =>
+        {
+            if (value is null)
+            {
+                Fail(context, DomainErrors.Validation.Required, field);
+            }
+        });
+
     public static void InRange<T>(this IRuleBuilderInitial<T, int> rule, string field, int min, int max) =>
         rule.Custom((value, context) =>
         {
