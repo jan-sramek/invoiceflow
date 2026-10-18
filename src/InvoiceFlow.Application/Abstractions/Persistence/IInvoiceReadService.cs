@@ -1,5 +1,6 @@
 using InvoiceFlow.Application.Common;
 using InvoiceFlow.Application.Invoices.GetInvoice;
+using InvoiceFlow.Application.Invoices.GetInvoiceAudit;
 using InvoiceFlow.Application.Invoices.ListInvoices;
 using InvoiceFlow.Domain.Invoices;
 
@@ -18,4 +19,10 @@ public interface IInvoiceReadService
     /// <param name="cancellationToken">Cancels the database queries.</param>
     Task<PagedList<InvoiceSummaryDto>> ListAsync(
         ListInvoicesQuery query, InvoiceSort sort, DateOnly today, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// <see langword="null"/> when the invoice does not exist; an empty page when it exists but has no audit yet.
+    /// </summary>
+    Task<PagedList<InvoiceAuditEntryDto>?> GetAuditAsync(
+        InvoiceId id, int page, int pageSize, CancellationToken cancellationToken);
 }

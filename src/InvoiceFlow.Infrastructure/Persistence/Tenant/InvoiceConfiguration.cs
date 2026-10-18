@@ -18,6 +18,8 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(i => i.Id).ValueGeneratedNever();
         builder.Property<TenantId>(TenantDbContext.TenantIdProperty);
         builder.Property(i => i.Status).HasConversion<string>().HasMaxLength(32);
+        builder.Property(i => i.DuplicateStatus).HasConversion<string>().HasMaxLength(32);
+        builder.Property(i => i.DuplicateRule).HasMaxLength(32);
 
         // Fields keep their plain names instead of the default fields_ prefix.
         builder.ComplexProperty(i => i.Fields, fields =>
@@ -31,6 +33,21 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             fields.Property(f => f.TaxAmount).HasColumnName("tax_amount");
             fields.Property(f => f.TotalAmount).HasColumnName("total_amount");
             fields.Property(f => f.PurchaseOrderReference).HasColumnName("purchase_order_reference");
+        });
+
+        builder.OwnsOne(i => i.Document, document =>
+        {
+            document.ToTable("invoice_documents");
+            document.WithOwner().HasForeignKey("invoice_id");
+            document.HasKey(d => d.Id);
+            document.Property(d => d.Id).ValueGeneratedNever();
+            document.Property<TenantId>(TenantDbContext.TenantIdProperty);
+            document.Property(d => d.StorageKey).HasMaxLength(200);
+            document.Property(d => d.OriginalFileName).HasMaxLength(InvoiceDocument.MaxFileNameLength);
+            document.Property(d => d.ContentType).HasMaxLength(100);
+            document.Property(d => d.SizeBytes);
+            document.Property(d => d.Sha256).HasMaxLength(64);
+            document.HasIndex(d => d.Sha256);
         });
 
         builder.ComplexProperty(i => i.UploadedBy, ActorMapping.Configure);

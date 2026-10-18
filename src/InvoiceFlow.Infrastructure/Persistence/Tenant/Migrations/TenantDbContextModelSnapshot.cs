@@ -121,6 +121,21 @@ namespace InvoiceFlow.Infrastructure.Persistence.Tenant.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("DuplicateOfInvoiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("duplicate_of_invoice_id");
+
+                    b.Property<string>("DuplicateRule")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("duplicate_rule");
+
+                    b.Property<string>("DuplicateStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("duplicate_status");
+
                     b.Property<DateOnly?>("PaidOn")
                         .HasColumnType("date")
                         .HasColumnName("paid_on");
@@ -248,6 +263,41 @@ namespace InvoiceFlow.Infrastructure.Persistence.Tenant.Migrations
                     b.ToTable("invoices", (string)null);
                 });
 
+            modelBuilder.Entity("InvoiceFlow.Infrastructure.Persistence.Idempotency.IdempotencyRecord", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("InvoiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invoice_id");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("request_hash");
+
+                    b.HasKey("Key", "UserId")
+                        .HasName("pk_idempotency_keys");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_idempotency_keys_created_at");
+
+                    b.ToTable("idempotency_keys", (string)null);
+                });
+
             modelBuilder.Entity("InvoiceFlow.Infrastructure.Persistence.Tenant.TenantSettings", b =>
                 {
                     b.Property<Guid>("TenantId")
@@ -258,6 +308,71 @@ namespace InvoiceFlow.Infrastructure.Persistence.Tenant.Migrations
                         .HasName("pk_tenant_settings");
 
                     b.ToTable("tenant_settings", (string)null);
+                });
+
+            modelBuilder.Entity("InvoiceFlow.Domain.Invoices.Invoice", b =>
+                {
+                    b.OwnsOne("InvoiceFlow.Domain.Invoices.InvoiceDocument", "Document", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
+
+                            b1.Property<string>("ContentType")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("content_type");
+
+                            b1.Property<string>("OriginalFileName")
+                                .IsRequired()
+                                .HasMaxLength(255)
+                                .HasColumnType("character varying(255)")
+                                .HasColumnName("original_file_name");
+
+                            b1.Property<string>("Sha256")
+                                .IsRequired()
+                                .HasMaxLength(64)
+                                .HasColumnType("character varying(64)")
+                                .HasColumnName("sha256");
+
+                            b1.Property<long>("SizeBytes")
+                                .HasColumnType("bigint")
+                                .HasColumnName("size_bytes");
+
+                            b1.Property<string>("StorageKey")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("storage_key");
+
+                            b1.Property<Guid>("TenantId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("tenant_id");
+
+                            b1.Property<Guid>("invoice_id")
+                                .HasColumnType("uuid")
+                                .HasColumnName("invoice_id");
+
+                            b1.HasKey("Id")
+                                .HasName("pk_invoice_documents");
+
+                            b1.HasIndex("Sha256")
+                                .HasDatabaseName("ix_invoice_documents_sha256");
+
+                            b1.HasIndex("invoice_id")
+                                .IsUnique()
+                                .HasDatabaseName("ix_invoice_documents_invoice_id");
+
+                            b1.ToTable("invoice_documents", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("invoice_id")
+                                .HasConstraintName("fk_invoice_documents_invoices_invoice_id");
+                        });
+
+                    b.Navigation("Document")
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

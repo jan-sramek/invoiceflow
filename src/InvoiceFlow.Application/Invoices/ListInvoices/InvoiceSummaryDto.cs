@@ -15,4 +15,5 @@ public sealed record InvoiceSummaryDto(
     string? Currency,
     decimal? TotalAmount,
     DateTimeOffset UploadedAt,
-    bool IsOverdue);
+    bool IsOverdue,
+    DuplicateStatus DuplicateStatus);

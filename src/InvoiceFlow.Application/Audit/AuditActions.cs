@@ -6,6 +6,9 @@ namespace InvoiceFlow.Application.Audit;
 public static class AuditActions
 {
     public const string InvoiceUploaded = "invoice.uploaded";
+    public const string InvoiceDuplicateSuspected = "invoice.duplicate_suspected";
+    public const string InvoiceDuplicateCleared = "invoice.duplicate_cleared";
+    public const string InvoiceDocumentDownloaded = "invoice.document_downloaded";
     public const string InvoiceFieldsCorrected = "invoice.fields_corrected";
     public const string InvoiceProcessingStarted = "invoice.processing_started";
     public const string InvoiceExtracted = "invoice.extracted";

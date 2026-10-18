@@ -1,14 +1,17 @@
 using FluentValidation;
 using InvoiceFlow.Application.Abstractions.Context;
+using InvoiceFlow.Application.Abstractions.Documents;
 using InvoiceFlow.Application.Abstractions.Messaging;
 using InvoiceFlow.Application.Abstractions.Persistence;
 using InvoiceFlow.Application.Behaviors;
 using InvoiceFlow.Application.Common;
 using InvoiceFlow.Application.Errors;
 using InvoiceFlow.Application.Invoices.GetInvoice;
+using InvoiceFlow.Application.Invoices.GetInvoiceAudit;
 using InvoiceFlow.Application.Invoices.ListInvoices;
 using InvoiceFlow.Domain.Common;
 using InvoiceFlow.Domain.Invoices;
+using InvoiceFlow.Domain.Tenants;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
@@ -101,6 +104,9 @@ public class PipelineTests
             .AddScoped<IUnitOfWork>(provider => new RecordingUnitOfWork(provider.GetRequiredService<Calls>(), failCommit))
             .AddScoped<IInvoiceReadService, NoInvoices>()
             .AddScoped<IInvoiceRepository, NoInvoices>()
+            .AddSingleton<IDocumentStorage, NoDocuments>()
+            .AddScoped<IIdempotencyStore, NoIdempotency>()
+            .AddScoped<ITenantContext, FixedTenant>()
             .AddScoped<ICurrentUser, NoUser>()
             .AddScoped<ICommandHandler<TestCommand, int>, TestCommandHandler>()
             .AddScoped<IQueryHandler<TestQuery, int>, TestQueryHandler>()
@@ -189,11 +195,18 @@ public class PipelineTests
             ListInvoicesQuery query, InvoiceSort sort, DateOnly today, CancellationToken cancellationToken) =>
             Task.FromResult(new PagedList<InvoiceSummaryDto>([], query.Page, query.PageSize, 0));
 
+        public Task<PagedList<InvoiceAuditEntryDto>?> GetAuditAsync(
+            InvoiceId id, int page, int pageSize, CancellationToken cancellationToken) =>
+            Task.FromResult<PagedList<InvoiceAuditEntryDto>?>(null);
+
         public Task<Invoice?> GetAsync(InvoiceId id, CancellationToken cancellationToken) =>
             Task.FromResult<Invoice?>(null);
 
         public Task<Invoice?> GetAsync(InvoiceId id, string expectedVersion, CancellationToken cancellationToken) =>
             Task.FromResult<Invoice?>(null);
+
+        public Task<InvoiceId?> FindIdByDocumentSha256Async(string sha256, CancellationToken cancellationToken) =>
+            Task.FromResult<InvoiceId?>(null);
 
         public void Add(Invoice invoice) => throw new NotSupportedException();
     }
@@ -201,5 +214,35 @@ public class PipelineTests
     private sealed class NoUser : ICurrentUser
     {
         public Actor Actor => throw new UserRequiredException();
+    }
+
+    private sealed class FixedTenant : ITenantContext
+    {
+        public TenantId TenantId { get; } = new(Guid.CreateVersion7());
+    }
+
+    private sealed class NoDocuments : IDocumentStorage
+    {
+        public Task PutAsync(
+            string key, Stream content, string contentType, long sizeBytes, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken) =>
+            Task.FromResult<Stream>(Stream.Null);
+
+        public Task DeleteAsync(string key, CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
+    private sealed class NoIdempotency : IIdempotencyStore
+    {
+        public Task<IdempotencyBeginResult> BeginAsync(
+            string key, string userId, string requestHash, CancellationToken cancellationToken) =>
+            Task.FromResult<IdempotencyBeginResult>(new IdempotencyBeginResult.Started());
+
+        public Task CompleteAsync(string key, string userId, Guid invoiceId, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public Task AbandonAsync(string key, string userId, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 }

@@ -34,6 +34,11 @@ public sealed record ListInvoicesQuery : IQuery<PagedList<InvoiceSummaryDto>>
     public bool Overdue { get; init; }
 
     /// <summary>
+    /// When set, only invoices with this duplicate status.
+    /// </summary>
+    public DuplicateStatus? DuplicateStatus { get; init; }
+
+    /// <summary>
     /// Part of the supplier name or invoice number, in any letter case.
     /// </summary>
     public string? Search { get; init; }

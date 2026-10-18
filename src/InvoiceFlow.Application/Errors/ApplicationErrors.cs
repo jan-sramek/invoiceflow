@@ -52,4 +52,22 @@ public static class ApplicationErrors
         [Description("Tenant unavailable")]
         public const string Unavailable = "tenant.unavailable";
     }
+
+    public static class Storage
+    {
+        [Description("Document storage unavailable")]
+        public const string Unavailable = "storage.unavailable";
+    }
+
+    public static class Idempotency
+    {
+        [Description("Idempotency key in progress")]
+        public const string InProgress = "idempotency.in_progress";
+
+        [Description("Idempotency key reused")]
+        public const string KeyReused = "idempotency.key_reused";
+
+        [Description("Idempotency key required")]
+        public const string KeyRequired = "idempotency.key_required";
+    }
 }

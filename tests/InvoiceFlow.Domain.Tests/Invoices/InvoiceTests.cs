@@ -10,25 +10,76 @@ public class InvoiceTests
     [Fact]
     public void Upload_NewInvoice_IsUploadedAndRaisesUploaded()
     {
-        var invoice = Invoice.Upload(Clerk, Now);
+        var invoice = Invoice.Upload(Clerk, Now, Document());
 
         invoice.Status.ShouldBe(InvoiceStatus.Uploaded);
         invoice.UploadedBy.ShouldBe(Clerk);
         invoice.UploadedAt.ShouldBe(Now);
+        invoice.Document.OriginalFileName.ShouldBe("invoice.pdf");
+        invoice.DuplicateStatus.ShouldBe(DuplicateStatus.None);
         invoice.Id.Value.Version.ShouldBe(7);
         invoice.DomainEvents.ShouldHaveSingleItem().ShouldBe(new InvoiceUploaded(invoice.Id, Clerk, Now));
     }
 
     [Fact]
+    [Trait("Requirement", "FR-UPL-04")]
+    public void Upload_WithSameFileAsExisting_FlagsDuplicate()
+    {
+        Invoice original = InStatus(InvoiceStatus.Uploaded);
+        InvoiceDocument document = Document(original.Document.Sha256);
+
+        var invoice = Invoice.Upload(Clerk, Now, document, original.Id);
+
+        invoice.DuplicateStatus.ShouldBe(DuplicateStatus.Suspected);
+        invoice.DuplicateOfInvoiceId.ShouldBe(original.Id);
+        invoice.DuplicateRule.ShouldBe(DuplicateRule.ExactFile);
+        invoice.DomainEvents.ShouldContain(new InvoiceDuplicateSuspected(
+            invoice.Id, Clerk, Now, original.Id, DuplicateRule.ExactFile));
+    }
+
+    [Fact]
+    [Trait("Rule", "BR-10")]
+    public void Submit_WithUnresolvedDuplicate_IsRefused()
+    {
+        Invoice original = InStatus(InvoiceStatus.Uploaded);
+        var invoice = Invoice.Upload(Clerk, Now, Document(original.Document.Sha256), original.Id);
+        invoice.EnterManually(Clerk, Now);
+        invoice.UpdateFields(Clerk, Now, ValidFields);
+        invoice.ClearDomainEvents();
+
+        BusinessRuleException exception = Should.Throw<BusinessRuleException>(() => invoice.Submit(Clerk, Now));
+
+        exception.Code.ShouldBe(DomainErrors.Invoice.UnresolvedDuplicate);
+        invoice.Status.ShouldBe(InvoiceStatus.NeedsReview);
+    }
+
+    [Fact]
+    [Trait("Requirement", "FR-DUP-03")]
+    public void AcknowledgeNotDuplicate_ClearsFlagAndAllowsSubmit()
+    {
+        Invoice original = InStatus(InvoiceStatus.Uploaded);
+        var invoice = Invoice.Upload(Clerk, Now, Document(original.Document.Sha256), original.Id);
+        invoice.EnterManually(Clerk, Now);
+        invoice.UpdateFields(Clerk, Now, ValidFields);
+        invoice.ClearDomainEvents();
+
+        invoice.AcknowledgeNotDuplicate(Clerk, Now, "Different delivery note");
+        invoice.Submit(Clerk, Now);
+
+        invoice.DuplicateStatus.ShouldBe(DuplicateStatus.Cleared);
+        invoice.Status.ShouldBe(InvoiceStatus.PendingApproval);
+    }
+
+    [Fact]
     public void Upload_TwoInvoices_GetDifferentIds()
     {
-        Invoice.Upload(Clerk, Now).Id.ShouldNotBe(Invoice.Upload(Clerk, Now).Id);
+        Invoice.Upload(Clerk, Now, Document()).Id.ShouldNotBe(Invoice.Upload(Clerk, Now, Document()).Id);
     }
 
     [Fact]
     public void Upload_NewInvoice_HasNoFields()
     {
-        Invoice.Upload(Clerk, Now).Fields.ShouldBe(InvoiceFields.Empty);
+        Invoice.Upload(Clerk, Now, Document()).Fields.ShouldBe(InvoiceFields.Empty);
     }
 
     [Fact]
@@ -118,7 +169,7 @@ public class InvoiceTests
     [Fact]
     public void ClearDomainEvents_RemovesRaisedEvents()
     {
-        var invoice = Invoice.Upload(Clerk, Now);
+        var invoice = Invoice.Upload(Clerk, Now, Document());
 
         invoice.ClearDomainEvents();
 

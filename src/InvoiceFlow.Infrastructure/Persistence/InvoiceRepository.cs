@@ -26,6 +26,24 @@ internal sealed class InvoiceRepository(TenantDbContext dbContext) : IInvoiceRep
             : throw new ConcurrencyException();
     }
 
-    public void Add(Invoice invoice) =>
-        dbContext.Invoices.Add(invoice).Property(TenantDbContext.TenantIdProperty).CurrentValue = dbContext.TenantId;
+    public async Task<InvoiceId?> FindIdByDocumentSha256Async(string sha256, CancellationToken cancellationToken)
+    {
+        InvoiceId id = await dbContext.Invoices
+            .AsNoTracking()
+            .Where(i => i.Document.Sha256 == sha256)
+            .OrderBy(i => i.UploadedAt)
+            .ThenBy(i => i.Id)
+            .Select(i => i.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return id.Value == Guid.Empty ? null : id;
+    }
+
+    public void Add(Invoice invoice)
+    {
+        Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<Invoice> entry = dbContext.Invoices.Add(invoice);
+        entry.Property(TenantDbContext.TenantIdProperty).CurrentValue = dbContext.TenantId;
+        entry.Reference(i => i.Document).TargetEntry!
+            .Property(TenantDbContext.TenantIdProperty).CurrentValue = dbContext.TenantId;
+    }
 }

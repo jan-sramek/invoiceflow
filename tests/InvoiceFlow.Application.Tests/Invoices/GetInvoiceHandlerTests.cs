@@ -2,6 +2,7 @@ using InvoiceFlow.Application.Abstractions.Persistence;
 using InvoiceFlow.Application.Common;
 using InvoiceFlow.Application.Errors;
 using InvoiceFlow.Application.Invoices.GetInvoice;
+using InvoiceFlow.Application.Invoices.GetInvoiceAudit;
 using InvoiceFlow.Application.Invoices.ListInvoices;
 using InvoiceFlow.Domain.Common;
 using InvoiceFlow.Domain.Invoices;
@@ -36,6 +37,8 @@ public class GetInvoiceHandlerTests
         Id.Value,
         InvoiceStatus.Uploaded,
         new InvoiceFieldsDto(null, null, null, null, null, null, null, null, null),
+        new InvoiceDocumentDto(Guid.CreateVersion7(), "invoice.pdf", InvoiceDocument.PdfContentType, 1024),
+        null,
         new ActorDto(ActorType.User, "clerk-1", "Clara Clerk"),
         DateTimeOffset.UnixEpoch,
         null,
@@ -49,6 +52,10 @@ public class GetInvoiceHandlerTests
 
         public Task<PagedList<InvoiceSummaryDto>> ListAsync(
             ListInvoicesQuery query, InvoiceSort sort, DateOnly today, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<PagedList<InvoiceAuditEntryDto>?> GetAuditAsync(
+            InvoiceId id, int page, int pageSize, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
     }
 }

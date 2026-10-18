@@ -33,6 +33,11 @@ public sealed record InvoiceListRequest
     public bool? Overdue { get; init; }
 
     /// <summary>
+    /// Only invoices with this duplicate status (<c>None</c>, <c>Suspected</c> or <c>Cleared</c>).
+    /// </summary>
+    public DuplicateStatus? DuplicateStatus { get; init; }
+
+    /// <summary>
     /// Part of the supplier name or invoice number, in any letter case.
     /// </summary>
     public string? Search { get; init; }
@@ -61,6 +66,7 @@ public sealed record InvoiceListRequest
         TotalAmountTo = TotalAmountTo,
         Currency = Currency,
         Overdue = Overdue ?? false,
+        DuplicateStatus = DuplicateStatus,
         Search = Search,
         Sort = Sort,
         Page = Page ?? 1,

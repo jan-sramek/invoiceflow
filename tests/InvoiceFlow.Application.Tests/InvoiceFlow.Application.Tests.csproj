@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\InvoiceFlow.Application\InvoiceFlow.Application.csproj" />
+    <ProjectReference Include="..\InvoiceFlow.Testing\InvoiceFlow.Testing.csproj" />
   </ItemGroup>
 
   <ItemGroup>

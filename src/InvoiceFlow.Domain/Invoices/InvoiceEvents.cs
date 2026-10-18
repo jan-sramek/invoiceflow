@@ -7,6 +7,19 @@ public sealed record InvoiceUploaded(InvoiceId InvoiceId, Actor Actor, DateTimeO
 public sealed record InvoiceFieldsCorrected(
     InvoiceId InvoiceId, Actor Actor, DateTimeOffset OccurredAt, IReadOnlyList<FieldChange> Changes) : IDomainEvent;
 
+public sealed record InvoiceDuplicateSuspected(
+    InvoiceId InvoiceId,
+    Actor Actor,
+    DateTimeOffset OccurredAt,
+    InvoiceId OriginalInvoiceId,
+    string Rule) : IDomainEvent;
+
+public sealed record InvoiceDuplicateCleared(
+    InvoiceId InvoiceId, Actor Actor, DateTimeOffset OccurredAt, string Reason) : IDomainEvent;
+
+public sealed record InvoiceDocumentDownloaded(
+    InvoiceId InvoiceId, Actor Actor, DateTimeOffset OccurredAt) : IDomainEvent;
+
 public abstract record InvoiceStatusChanged(
     InvoiceId InvoiceId, Actor Actor, DateTimeOffset OccurredAt, InvoiceStatus From, InvoiceStatus To) : IDomainEvent;
 
@@ -57,8 +70,7 @@ public sealed record InvoicePaid(
     InvoiceStatus From,
     InvoiceStatus To,
     DateOnly PaidOn,
-    string PaymentReference)
-    : InvoiceStatusChanged(InvoiceId, Actor, OccurredAt, From, To);
+    string PaymentReference) : InvoiceStatusChanged(InvoiceId, Actor, OccurredAt, From, To);
 
 public sealed record InvoiceCancelled(
     InvoiceId InvoiceId, Actor Actor, DateTimeOffset OccurredAt, InvoiceStatus From, InvoiceStatus To, string Reason)

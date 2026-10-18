@@ -26,6 +26,10 @@
     <PackageVersion Include="Scalar.AspNetCore" Version="2.17.14" />
   </ItemGroup>
 
+  <ItemGroup Label="Storage">
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.19" />
+  </ItemGroup>
+
   <ItemGroup Label="Persistence">
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
     <!-- Pinned so the provider's older transitive EF Core matches the design-time package -->

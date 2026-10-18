@@ -10,5 +10,7 @@ public enum ErrorKind
     Forbidden,
     PreconditionFailed,
     PreconditionRequired,
+    PayloadTooLarge,
+    UnsupportedMediaType,
     Unavailable,
 }

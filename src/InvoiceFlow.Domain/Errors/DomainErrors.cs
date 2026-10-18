@@ -48,11 +48,23 @@ public static class DomainErrors
 
         [Description("Invoice not ready for submission")]
         public const string NotReadyForSubmission = "invoice.not_ready_for_submission";
+
+        [Description("Unresolved duplicate")]
+        public const string UnresolvedDuplicate = "invoice.unresolved_duplicate";
     }
 
     public static class Approval
     {
         [Description("Own invoice cannot be approved")]
         public const string OwnInvoice = "approval.own_invoice";
+    }
+
+    public static class Upload
+    {
+        [Description("File too large")]
+        public const string TooLarge = "upload.too_large";
+
+        [Description("Not a PDF")]
+        public const string NotPdf = "upload.not_pdf";
     }
 }
