@@ -2,6 +2,7 @@ using InvoiceFlow.Application.Audit;
 using InvoiceFlow.Domain.Common;
 using InvoiceFlow.Domain.Invoices;
 using InvoiceFlow.Domain.Tenants;
+using InvoiceFlow.Testing.Invoices;
 
 namespace InvoiceFlow.Application.Tests.Audit;
 
@@ -42,7 +43,7 @@ public class AuditEntryFactoryTests
     [Fact]
     public void Create_CopiesEventContext()
     {
-        var invoice = Invoice.Upload(Clerk, Now);
+        var invoice = Invoice.Upload(Clerk, Now, InvoiceFlow.Testing.Invoices.TestDocuments.Create(Now));
 
         AuditEntry entry = AuditEntryFactory.Create(invoice.DomainEvents[0], Tenant, "4bf92f3577b34da6a3ce929d0e0e4736");
 
@@ -108,7 +109,7 @@ public class AuditEntryFactoryTests
 
     private static Invoice InNeedsReview()
     {
-        var invoice = Invoice.Upload(Clerk, Now);
+        var invoice = Invoice.Upload(Clerk, Now, TestDocuments.Create(Now));
         invoice.EnterManually(Clerk, Now);
         invoice.UpdateFields(Clerk, Now, Fields);
         return invoice;
@@ -116,7 +117,13 @@ public class AuditEntryFactoryTests
 
     private static IDomainEvent[] EveryKindOfEvent()
     {
-        var main = Invoice.Upload(Clerk, Now);
+        const string Hash = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        var original = Invoice.Upload(Clerk, Now, TestDocuments.Create(Now, Hash));
+        var duplicate = Invoice.Upload(Clerk, Now, TestDocuments.Create(Now, Hash), original.Id);
+        duplicate.AcknowledgeNotDuplicate(Clerk, Now, "Different supplier same scan");
+        duplicate.RecordDocumentDownloaded(Clerk, Now);
+
+        var main = Invoice.Upload(Clerk, Now, TestDocuments.Create(Now));
         main.StartProcessing(Worker, Now);
         main.FailExtraction(Worker, Now, "No text layer");
         main.RetryExtraction(Clerk, Now);
@@ -129,16 +136,18 @@ public class AuditEntryFactoryTests
         main.Approve(Approver, Now);
         main.MarkPaid(Approver, Now, new DateOnly(2026, 10, 12), "BANK-42");
 
-        var reviewed = Invoice.Upload(Clerk, Now);
+        var reviewed = Invoice.Upload(Clerk, Now, TestDocuments.Create(Now));
         reviewed.StartProcessing(Worker, Now);
         reviewed.RequireReview(Worker, Now);
         reviewed.Cancel(Clerk, Now, "Duplicate");
 
-        var manual = Invoice.Upload(Clerk, Now);
+        var manual = Invoice.Upload(Clerk, Now, TestDocuments.Create(Now));
         manual.EnterManually(Clerk, Now);
 
         return
         [
+            .. original.DomainEvents,
+            .. duplicate.DomainEvents,
             .. main.DomainEvents,
             .. reviewed.DomainEvents.Where(e => e is InvoiceReviewRequired or InvoiceCancelled),
             .. manual.DomainEvents.OfType<InvoiceManualEntryStarted>(),

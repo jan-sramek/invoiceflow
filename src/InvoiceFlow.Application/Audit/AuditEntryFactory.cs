@@ -16,6 +16,17 @@ public static class AuditEntryFactory
         Mapping mapping = domainEvent switch
         {
             InvoiceUploaded uploaded => new(AuditActions.InvoiceUploaded, uploaded.InvoiceId, []),
+            InvoiceDuplicateSuspected suspected => new(
+                AuditActions.InvoiceDuplicateSuspected,
+                suspected.InvoiceId,
+                [
+                    new("rule", null, suspected.Rule),
+                    new("originalInvoiceId", null, suspected.OriginalInvoiceId.Value.ToString()),
+                ]),
+            InvoiceDuplicateCleared cleared => new(
+                AuditActions.InvoiceDuplicateCleared, cleared.InvoiceId, [], cleared.Reason),
+            InvoiceDocumentDownloaded downloaded => new(
+                AuditActions.InvoiceDocumentDownloaded, downloaded.InvoiceId, []),
             InvoiceFieldsCorrected corrected => new(
                 AuditActions.InvoiceFieldsCorrected,
                 corrected.InvoiceId,

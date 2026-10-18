@@ -3,6 +3,7 @@ using InvoiceFlow.Application.Audit;
 using InvoiceFlow.Domain.Common;
 using InvoiceFlow.Domain.Invoices;
 using InvoiceFlow.Domain.Tenants;
+using InvoiceFlow.Infrastructure.Persistence.Idempotency;
 using Microsoft.EntityFrameworkCore;
 
 namespace InvoiceFlow.Infrastructure.Persistence.Tenant;
@@ -19,6 +20,8 @@ internal sealed class TenantDbContext(DbContextOptions<TenantDbContext> options,
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
 
     public DbSet<TenantSettings> Settings => Set<TenantSettings>();
+
+    public DbSet<IdempotencyRecord> IdempotencyKeys => Set<IdempotencyRecord>();
 
     /// <summary>
     /// Without a connection string, <see cref="Tenancy.TenantConnectionInterceptor"/> routes the connection.
@@ -52,6 +55,16 @@ internal sealed class TenantDbContext(DbContextOptions<TenantDbContext> options,
         {
             settings.ToTable("tenant_settings");
             settings.HasKey(s => s.TenantId);
+        });
+
+        modelBuilder.Entity<IdempotencyRecord>(idempotency =>
+        {
+            idempotency.ToTable("idempotency_keys");
+            idempotency.HasKey(r => new { r.Key, r.UserId });
+            idempotency.Property(r => r.Key).HasMaxLength(128);
+            idempotency.Property(r => r.UserId).HasMaxLength(100);
+            idempotency.Property(r => r.RequestHash).HasMaxLength(64);
+            idempotency.HasIndex(r => r.CreatedAt);
         });
 
         // Second line of defence: the database already belongs to one tenant.

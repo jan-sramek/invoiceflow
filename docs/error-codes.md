@@ -64,7 +64,23 @@ A status of *field* means the code appears only inside `errors`.
 | <a id="invoice.invalid_transition"></a>`invoice.invalid_transition` | 409 | The invoice's status does not allow this action. | `from`, `action` | Reload the invoice and choose an allowed action. |
 | <a id="invoice.not_ready_for_submission"></a>`invoice.not_ready_for_submission` | 422 | Fields needed for submission are missing or inconsistent; `errors` lists them. | | Complete the fields in `errors`, then submit again. |
 | <a id="invoice.payment_date_in_future"></a>`invoice.payment_date_in_future` | 422 | The payment date is later than today. | | Enter the date the payment was made. |
+| <a id="invoice.unresolved_duplicate"></a>`invoice.unresolved_duplicate` | 422 | The invoice is flagged as a possible duplicate and that has not been resolved. | | Confirm it is not a duplicate, or cancel it. |
 | <a id="approval.own_invoice"></a>`approval.own_invoice` | 403 | Nobody may approve or reject an invoice they submitted. | | Ask another approver. |
+
+## Upload
+
+| Code | Status | Meaning | Params | What to do |
+| --- | --- | --- | --- | --- |
+| <a id="upload.too_large"></a>`upload.too_large` | 413 | The file is larger than the allowed maximum. | `maxBytes` | Send a PDF of at most `maxBytes` bytes. |
+| <a id="upload.not_pdf"></a>`upload.not_pdf` | 415 | The file is missing or is not a PDF. | | Send a PDF file. |
+
+## Idempotency
+
+| Code | Status | Meaning | Params | What to do |
+| --- | --- | --- | --- | --- |
+| <a id="idempotency.key_required"></a>`idempotency.key_required` | 400 | The upload had no `Idempotency-Key` header. | | Send a unique key per upload attempt. |
+| <a id="idempotency.in_progress"></a>`idempotency.in_progress` | 409 | The same key is still being processed. | | Wait briefly and retry with the same key. |
+| <a id="idempotency.key_reused"></a>`idempotency.key_reused` | 422 | The same key was used for a different file. | | Use a new key for the new file. |
 
 ## Access
 
@@ -79,4 +95,5 @@ A status of *field* means the code appears only inside `errors`.
 | <a id="concurrency.if_match_required"></a>`concurrency.if_match_required` | 428 | A write came without the `ETag` of the version it changes. | | Send the `ETag` from the last read as `If-Match`. |
 | <a id="concurrency.stale_version"></a>`concurrency.stale_version` | 412 | Someone changed the resource after you read it. | | Reload, reapply your change and retry. |
 | <a id="tenant.unavailable"></a>`tenant.unavailable` | 503 | Your organisation's data store is not reachable. | | Retry after `Retry-After` seconds. |
+| <a id="storage.unavailable"></a>`storage.unavailable` | 503 | Document storage is not reachable. | | Retry after `Retry-After` seconds. |
 | <a id="server.unexpected"></a>`server.unexpected` | 500 | An unexpected error occurred. | | Report it with the `traceId`. |

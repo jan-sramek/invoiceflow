@@ -2,12 +2,19 @@ using System.Text.Json.Serialization;
 using InvoiceFlow.Api.Authentication;
 using InvoiceFlow.Api.Errors;
 using InvoiceFlow.Application;
+using InvoiceFlow.Domain.Invoices;
 using InvoiceFlow.Infrastructure;
 using InvoiceFlow.ServiceDefaults;
 using InvoiceFlow.ServiceDefaults.Health;
+using Microsoft.AspNetCore.Http.Features;
 using Scalar.AspNetCore;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+builder.WebHost.ConfigureKestrel(options =>
+    options.Limits.MaxRequestBodySize = InvoiceDocument.MaxSizeBytes + (64 * 1024));
+builder.Services.Configure<FormOptions>(options =>
+    options.MultipartBodyLengthLimit = InvoiceDocument.MaxSizeBytes + (64 * 1024));
 
 builder.AddServiceDefaults();
 builder.Services.AddApplication();

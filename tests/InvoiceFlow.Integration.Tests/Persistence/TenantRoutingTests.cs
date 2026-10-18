@@ -103,7 +103,7 @@ public sealed class TenantRoutingTests(PostgresFixture database)
     {
         TestTenant tenant = await database.CreateTenantAsync();
         var intruder = new TenantId(Guid.CreateVersion7());
-        var invoice = Invoice.Upload(Clerk, Now);
+        var invoice = Invoice.Upload(Clerk, Now, InvoiceFlow.Testing.Invoices.TestDocuments.Create(Now));
 
         await using (TenantDbContext unrouted = database.OpenUnrouted(tenant.Database, intruder))
         {
@@ -125,7 +125,7 @@ public sealed class TenantRoutingTests(PostgresFixture database)
     private async Task AddInvoiceAsync(TenantId tenantId)
     {
         await using AsyncServiceScope scope = database.OpenScope(tenantId);
-        scope.ServiceProvider.GetRequiredService<IInvoiceRepository>().Add(Invoice.Upload(Clerk, Now));
+        scope.ServiceProvider.GetRequiredService<IInvoiceRepository>().Add(Invoice.Upload(Clerk, Now, InvoiceFlow.Testing.Invoices.TestDocuments.Create(Now)));
         await scope.ServiceProvider.GetRequiredService<IUnitOfWork>().CommitAsync(CancellationToken);
     }
 

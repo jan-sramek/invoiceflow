@@ -1,7 +1,9 @@
 using System.Linq.Expressions;
 using InvoiceFlow.Application.Abstractions.Persistence;
+using InvoiceFlow.Application.Audit;
 using InvoiceFlow.Application.Common;
 using InvoiceFlow.Application.Invoices.GetInvoice;
+using InvoiceFlow.Application.Invoices.GetInvoiceAudit;
 using InvoiceFlow.Application.Invoices.ListInvoices;
 using InvoiceFlow.Domain.Common;
 using InvoiceFlow.Domain.Invoices;
@@ -35,6 +37,17 @@ internal sealed class InvoiceReadService(TenantDbContext dbContext) : IInvoiceRe
                         i.Fields.TaxAmount,
                         i.Fields.TotalAmount,
                         i.Fields.PurchaseOrderReference == null ? null : i.Fields.PurchaseOrderReference.Value),
+                    new InvoiceDocumentDto(
+                        i.Document.Id,
+                        i.Document.OriginalFileName,
+                        i.Document.ContentType,
+                        i.Document.SizeBytes),
+                    i.DuplicateStatus == DuplicateStatus.None
+                        ? null
+                        : new InvoiceDuplicateDto(
+                            i.DuplicateStatus,
+                            i.DuplicateRule,
+                            i.DuplicateOfInvoiceId == null ? null : i.DuplicateOfInvoiceId.Value.Value),
                     new ActorDto(i.UploadedBy.Type, i.UploadedBy.Id, i.UploadedBy.Name),
                     i.UploadedAt,
                     i.SubmittedBy == null ? null : new ActorDto(i.SubmittedBy.Type, i.SubmittedBy.Id, i.SubmittedBy.Name),
@@ -68,10 +81,41 @@ internal sealed class InvoiceReadService(TenantDbContext dbContext) : IInvoiceRe
                 i.Fields.Currency == null ? null : i.Fields.Currency.Value,
                 i.Fields.TotalAmount,
                 i.UploadedAt,
-                i.Status == InvoiceStatus.Approved && i.Fields.DueDate < today))
+                i.Status == InvoiceStatus.Approved && i.Fields.DueDate < today,
+                i.DuplicateStatus))
             .ToListAsync(cancellationToken);
 
         return new PagedList<InvoiceSummaryDto>(items, query.Page, query.PageSize, totalCount);
+    }
+
+    public async Task<PagedList<InvoiceAuditEntryDto>?> GetAuditAsync(
+        InvoiceId id, int page, int pageSize, CancellationToken cancellationToken)
+    {
+        if (!await dbContext.Invoices.AsNoTracking().AnyAsync(i => i.Id == id, cancellationToken))
+        {
+            return null;
+        }
+
+        IQueryable<AuditEntry> entries = dbContext.AuditEntries.AsNoTracking()
+            .Where(e => e.SubjectType == AuditEntryFactory.InvoiceSubject && e.SubjectId == id.Value)
+            .OrderBy(e => e.OccurredAt)
+            .ThenBy(e => e.Id);
+
+        int totalCount = await entries.CountAsync(cancellationToken);
+        List<InvoiceAuditEntryDto> items = await entries
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(e => new InvoiceAuditEntryDto(
+                e.Id,
+                e.OccurredAt,
+                new ActorDto(e.Actor.Type, e.Actor.Id, e.Actor.Name),
+                e.Action,
+                e.Changes.Select(c => new AuditChangeDto(c.Field, c.OldValue, c.NewValue)).ToList(),
+                e.Reason,
+                e.CorrelationId))
+            .ToListAsync(cancellationToken);
+
+        return new PagedList<InvoiceAuditEntryDto>(items, page, pageSize, totalCount);
     }
 
     private static IQueryable<Invoice> Filter(IQueryable<Invoice> invoices, ListInvoicesQuery query, DateOnly today)
@@ -119,6 +163,11 @@ internal sealed class InvoiceReadService(TenantDbContext dbContext) : IInvoiceRe
         if (query.Overdue)
         {
             invoices = invoices.Where(i => i.Status == InvoiceStatus.Approved && i.Fields.DueDate < today);
+        }
+
+        if (query.DuplicateStatus is { } duplicateStatus)
+        {
+            invoices = invoices.Where(i => i.DuplicateStatus == duplicateStatus);
         }
 
         if (!string.IsNullOrWhiteSpace(query.Search))

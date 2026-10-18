@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using InvoiceFlow.Domain.Common;
 using InvoiceFlow.Domain.Invoices;
 
@@ -48,13 +49,20 @@ internal static class TestInvoices
         [InvoiceStatus.Cancelled] = [InvoiceAction.Cancel],
     };
 
+    public static InvoiceDocument Document(string? sha256 = null, string fileName = "invoice.pdf")
+    {
+        string hash = sha256 ?? Convert.ToHexString(SHA256.HashData("test-pdf"u8.ToArray())).ToLowerInvariant();
+        var id = Guid.CreateVersion7(Now);
+        return InvoiceDocument.Create(id, $"tenant/{id:N}", fileName, 1024, hash);
+    }
+
     /// <summary>
     /// An invoice uploaded by the clerk and moved to <paramref name="status"/>, with its events cleared.
     /// It gets <see cref="ValidFields"/> as soon as fields can be edited.
     /// </summary>
     public static Invoice InStatus(InvoiceStatus status)
     {
-        var invoice = Invoice.Upload(Clerk, Now);
+        var invoice = Invoice.Upload(Clerk, Now, Document());
 
         foreach (InvoiceAction action in PathFromUploaded[status])
         {
@@ -113,6 +121,9 @@ internal static class TestInvoices
                 break;
             case InvoiceAction.Cancel:
                 invoice.Cancel(actor, Now, Reason);
+                break;
+            case InvoiceAction.AcknowledgeNotDuplicate:
+                invoice.AcknowledgeNotDuplicate(actor, Now, Reason);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(action), action, null);

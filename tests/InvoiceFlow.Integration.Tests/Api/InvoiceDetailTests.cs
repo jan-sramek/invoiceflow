@@ -68,7 +68,7 @@ public sealed class InvoiceDetailTests(PostgresFixture database) : IAsyncLifetim
     [Fact]
     public async Task Get_NewInvoice_ReturnsMissingValuesAsNull()
     {
-        var invoice = Invoice.Upload(Clerk, Start);
+        var invoice = Invoice.Upload(Clerk, Start, InvoiceFlow.Testing.Invoices.TestDocuments.Create(Start));
         await AddAsync(_tenant.Id, invoice);
 
         JsonElement body = await JsonAsync(await GetAsync(invoice.Id.Value));
@@ -83,7 +83,7 @@ public sealed class InvoiceDetailTests(PostgresFixture database) : IAsyncLifetim
     [Trait("Requirement", "FR-DET-03")]
     public async Task Get_ReturnsStrongETagThatChangesWithTheInvoice()
     {
-        var invoice = Invoice.Upload(Clerk, Start);
+        var invoice = Invoice.Upload(Clerk, Start, InvoiceFlow.Testing.Invoices.TestDocuments.Create(Start));
         await AddAsync(_tenant.Id, invoice);
 
         HttpResponseMessage before = await GetAsync(invoice.Id.Value);
@@ -99,7 +99,7 @@ public sealed class InvoiceDetailTests(PostgresFixture database) : IAsyncLifetim
     [Fact]
     public async Task Get_IsNeverCached()
     {
-        var invoice = Invoice.Upload(Clerk, Start);
+        var invoice = Invoice.Upload(Clerk, Start, InvoiceFlow.Testing.Invoices.TestDocuments.Create(Start));
         await AddAsync(_tenant.Id, invoice);
 
         HttpResponseMessage response = await GetAsync(invoice.Id.Value);
@@ -122,7 +122,7 @@ public sealed class InvoiceDetailTests(PostgresFixture database) : IAsyncLifetim
     public async Task Get_InvoiceOfAnotherTenant_LooksExactlyLikeUnknownId()
     {
         TestTenant other = await database.CreateTenantAsync();
-        var foreign = Invoice.Upload(Clerk, Start);
+        var foreign = Invoice.Upload(Clerk, Start, InvoiceFlow.Testing.Invoices.TestDocuments.Create(Start));
         await AddAsync(other.Id, foreign);
 
         JsonElement foreignProblem = await JsonAsync(await GetAsync(foreign.Id.Value));
@@ -143,7 +143,7 @@ public sealed class InvoiceDetailTests(PostgresFixture database) : IAsyncLifetim
 
     private static Invoice PaidInvoice()
     {
-        var invoice = Invoice.Upload(Clerk, Start);
+        var invoice = Invoice.Upload(Clerk, Start, InvoiceFlow.Testing.Invoices.TestDocuments.Create(Start));
         invoice.EnterManually(Clerk, Start.AddMinutes(1));
         invoice.UpdateFields(Clerk, Start.AddMinutes(2), new InvoiceFields
         {

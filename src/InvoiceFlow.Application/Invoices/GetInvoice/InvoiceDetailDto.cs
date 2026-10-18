@@ -7,11 +7,24 @@ public sealed record InvoiceDetailDto(
     Guid Id,
     InvoiceStatus Status,
     InvoiceFieldsDto Fields,
+    InvoiceDocumentDto Document,
+    InvoiceDuplicateDto? Duplicate,
     ActorDto UploadedBy,
     DateTimeOffset UploadedAt,
     ActorDto? SubmittedBy,
     DateOnly? PaidOn,
     string? PaymentReference);
+
+public sealed record InvoiceDocumentDto(
+    Guid Id,
+    string OriginalFileName,
+    string ContentType,
+    long SizeBytes);
+
+public sealed record InvoiceDuplicateDto(
+    DuplicateStatus Status,
+    string? Rule,
+    Guid? OriginalInvoiceId);
 
 /// <summary>
 /// The editable fields under the same names the edit request uses. Any of them may be missing until submission.

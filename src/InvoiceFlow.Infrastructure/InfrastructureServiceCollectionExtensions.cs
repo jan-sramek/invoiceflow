@@ -1,7 +1,10 @@
 using InvoiceFlow.Application.Abstractions.Context;
+using InvoiceFlow.Application.Abstractions.Documents;
 using InvoiceFlow.Application.Abstractions.Persistence;
+using InvoiceFlow.Infrastructure.Documents;
 using InvoiceFlow.Infrastructure.Persistence;
 using InvoiceFlow.Infrastructure.Persistence.Catalog;
+using InvoiceFlow.Infrastructure.Persistence.Idempotency;
 using InvoiceFlow.Infrastructure.Persistence.SchemaMigration;
 using InvoiceFlow.Infrastructure.Persistence.Tenant;
 using InvoiceFlow.Infrastructure.Tenancy;
@@ -23,6 +26,7 @@ public static class InfrastructureServiceCollectionExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
         services.AddMemoryCache();
+        services.TryAddSingleton(TimeProvider.System);
 
         services.AddScoped<ITenantContext, DevelopmentTenantContext>();
         services.AddSingleton<TenantConnectionResolver>();
@@ -33,7 +37,9 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
         services.AddScoped<IInvoiceReadService, InvoiceReadService>();
+        services.AddScoped<IIdempotencyStore, IdempotencyStore>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddDocumentStorage(configuration);
 
         return services;
     }
@@ -56,6 +62,32 @@ public static class InfrastructureServiceCollectionExtensions
 
     public static IHealthChecksBuilder AddCatalogCheck(this IHealthChecksBuilder builder, params string[] tags) =>
         builder.AddCheck<CatalogHealthCheck>("catalog", tags: tags);
+
+    /// <summary>
+    /// Replaces S3 with an in-memory store. Call after <see cref="AddInfrastructure"/>.
+    /// </summary>
+    public static IServiceCollection AddInMemoryDocumentStorage(this IServiceCollection services)
+    {
+        services.RemoveAll<IDocumentStorage>();
+        services.AddSingleton<IDocumentStorage, InMemoryDocumentStorage>();
+        return services;
+    }
+
+    private static void AddDocumentStorage(this IServiceCollection services, IConfiguration configuration)
+    {
+        IConfigurationSection section = configuration.GetSection(DocumentStorageOptions.SectionName);
+        if (!section.Exists() || string.IsNullOrWhiteSpace(section["ServiceUrl"]))
+        {
+            services.AddSingleton<IDocumentStorage, InMemoryDocumentStorage>();
+            return;
+        }
+
+        services.AddOptions<DocumentStorageOptions>()
+            .Bind(section)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddSingleton<IDocumentStorage, S3DocumentStorage>();
+    }
 
     private static void AddCatalog(this IServiceCollection services, IConfiguration configuration)
     {

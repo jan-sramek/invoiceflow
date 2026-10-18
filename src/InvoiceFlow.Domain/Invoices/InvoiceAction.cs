@@ -15,4 +15,5 @@ public enum InvoiceAction
     Reopen,
     MarkPaid,
     Cancel,
+    AcknowledgeNotDuplicate,
 }

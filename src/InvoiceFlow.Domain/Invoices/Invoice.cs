@@ -12,6 +12,16 @@ public sealed class Invoice : AggregateRoot
     // The latest local time anywhere is UTC+14, so a date that is today for any user is never in the future.
     private static readonly TimeSpan LatestUtcOffset = TimeSpan.FromHours(14);
 
+    private static readonly FrozenSet<InvoiceStatus> DuplicateResolutionAllowed =
+        new[]
+        {
+            InvoiceStatus.Uploaded,
+            InvoiceStatus.Processing,
+            InvoiceStatus.Extracted,
+            InvoiceStatus.NeedsReview,
+            InvoiceStatus.ExtractionFailed,
+        }.ToFrozenSet();
+
     private static readonly FrozenDictionary<(InvoiceStatus From, InvoiceAction Action), InvoiceStatus> Transitions =
         new Dictionary<(InvoiceStatus From, InvoiceAction Action), InvoiceStatus>
         {
@@ -49,14 +59,16 @@ public sealed class Invoice : AggregateRoot
     private Invoice()
     {
         UploadedBy = null!;
+        Document = null!;
     }
 
-    private Invoice(InvoiceId id, Actor uploadedBy, DateTimeOffset uploadedAt)
+    private Invoice(InvoiceId id, Actor uploadedBy, DateTimeOffset uploadedAt, InvoiceDocument document)
     {
         Id = id;
         Status = InvoiceStatus.Uploaded;
         UploadedBy = uploadedBy;
         UploadedAt = uploadedAt;
+        Document = document;
     }
 
     public InvoiceId Id { get; }
@@ -67,6 +79,14 @@ public sealed class Invoice : AggregateRoot
 
     public DateTimeOffset UploadedAt { get; }
 
+    public InvoiceDocument Document { get; private set; }
+
+    public DuplicateStatus DuplicateStatus { get; private set; }
+
+    public InvoiceId? DuplicateOfInvoiceId { get; private set; }
+
+    public string? DuplicateRule { get; private set; }
+
     public InvoiceFields Fields { get; private set; } = InvoiceFields.Empty;
 
     public Actor? SubmittedBy { get; private set; }
@@ -75,10 +95,29 @@ public sealed class Invoice : AggregateRoot
 
     public string? PaymentReference { get; private set; }
 
-    public static Invoice Upload(Actor uploadedBy, DateTimeOffset now)
+    /// <param name="uploadedBy">Who uploaded the PDF.</param>
+    /// <param name="now">Upload time; also used for the invoice id.</param>
+    /// <param name="document">The stored PDF metadata for this invoice.</param>
+    /// <param name="duplicateOf">
+    /// Another invoice in the same tenant with the same file hash, when this upload is a possible duplicate.
+    /// </param>
+    public static Invoice Upload(
+        Actor uploadedBy, DateTimeOffset now, InvoiceDocument document, InvoiceId? duplicateOf = null)
     {
-        var invoice = new Invoice(InvoiceId.New(now), uploadedBy, now);
+        ArgumentNullException.ThrowIfNull(document);
+
+        var invoice = new Invoice(InvoiceId.New(now), uploadedBy, now, document);
         invoice.Raise(new InvoiceUploaded(invoice.Id, uploadedBy, now));
+
+        if (duplicateOf is { } original)
+        {
+            invoice.DuplicateStatus = DuplicateStatus.Suspected;
+            invoice.DuplicateOfInvoiceId = original;
+            invoice.DuplicateRule = Invoices.DuplicateRule.ExactFile;
+            invoice.Raise(new InvoiceDuplicateSuspected(
+                invoice.Id, uploadedBy, now, original, Invoices.DuplicateRule.ExactFile));
+        }
+
         return invoice;
     }
 
@@ -145,6 +184,11 @@ public sealed class Invoice : AggregateRoot
             throw new InvoiceNotReadyException(issues);
         }
 
+        if (DuplicateStatus == DuplicateStatus.Suspected)
+        {
+            throw new BusinessRuleException(DomainErrors.Invoice.UnresolvedDuplicate);
+        }
+
         SubmittedBy = actor;
         MoveTo(new InvoiceSubmitted(Id, actor, now, Status, next));
     }
@@ -191,6 +235,29 @@ public sealed class Invoice : AggregateRoot
         string validReason = Text.Require(reason, nameof(reason), MaxReasonLength);
         MoveTo(new InvoiceCancelled(Id, actor, now, Status, next, validReason));
     }
+
+    /// <summary>
+    /// Records that a clerk checked the suspected duplicate and confirms this invoice is not a duplicate.
+    /// </summary>
+    public void AcknowledgeNotDuplicate(Actor actor, DateTimeOffset now, string reason)
+    {
+        if (DuplicateStatus != DuplicateStatus.Suspected)
+        {
+            throw new InvalidTransitionException(Status, InvoiceAction.AcknowledgeNotDuplicate);
+        }
+
+        if (!DuplicateResolutionAllowed.Contains(Status))
+        {
+            throw new InvalidTransitionException(Status, InvoiceAction.AcknowledgeNotDuplicate);
+        }
+
+        string validReason = Text.Require(reason, nameof(reason), MaxReasonLength);
+        DuplicateStatus = DuplicateStatus.Cleared;
+        Raise(new InvoiceDuplicateCleared(Id, actor, now, validReason));
+    }
+
+    public void RecordDocumentDownloaded(Actor actor, DateTimeOffset now) =>
+        Raise(new InvoiceDocumentDownloaded(Id, actor, now));
 
     private static DateOnly LatestToday(DateTimeOffset now) => DateOnly.FromDateTime(now.ToOffset(LatestUtcOffset).DateTime);
 

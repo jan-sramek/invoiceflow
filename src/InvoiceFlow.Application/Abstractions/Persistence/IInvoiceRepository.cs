@@ -13,5 +13,10 @@ public interface IInvoiceRepository
     /// <exception cref="Errors.ConcurrencyException">The invoice is at a different version.</exception>
     Task<Invoice?> GetAsync(InvoiceId id, string expectedVersion, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// The oldest invoice that already has this document hash, if any.
+    /// </summary>
+    Task<InvoiceId?> FindIdByDocumentSha256Async(string sha256, CancellationToken cancellationToken);
+
     void Add(Invoice invoice);
 }
