@@ -8,7 +8,8 @@ test.describe('smoke', { tag: '@smoke' }, () => {
     // Every run uploads different bytes, so the invoice is never a duplicate of an earlier run's.
     const run = randomUUID();
     const fileName = `smoke-${run}.pdf`;
-    const fixture = join(test.info().config.rootDir, 'fixtures', 'invoice-smoke.pdf');
+    // rootDir is testDir (./tests); fixtures live next to playwright.config.ts
+    const fixture = join(test.info().config.rootDir, '..', 'fixtures', 'invoice-smoke.pdf');
     const pdf = Buffer.concat([await readFile(fixture), Buffer.from(`%smoke-run ${run}\n`)]);
 
     await page.goto('/');

@@ -27,3 +27,4 @@ test-results/
 .env
 .kube/
 *.pem
+.local-secrets/
