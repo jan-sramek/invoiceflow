@@ -4,10 +4,10 @@ import { AppConfigService } from '../config';
 import { DEV_USER_HEADER, DevUserService } from './dev-user.service';
 import { isApiRequest } from './http-context';
 
-/** Adds `X-Development-User` to every API call. Other origins never see it. */
+/** Adds `X-Development-User` when OIDC is off and development users are enabled. */
 export const devUserInterceptor: HttpInterceptorFn = (request, next) => {
   const config = inject(AppConfigService);
-  if (!isApiRequest(request, config.apiBaseUrl)) {
+  if (config.usesOidc || !config.developmentUsers || !isApiRequest(request, config.apiBaseUrl)) {
     return next(request);
   }
   const user = inject(DevUserService).user();

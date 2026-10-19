@@ -28,6 +28,10 @@ spec:
         - name: keycloak
           # make keycloak-up fills in the tag
           image: localhost:5001/invoiceflow-keycloak:${KEYCLOAK_TAG}
+          args:
+            - start
+            - --optimized
+            - --import-realm
           env:
             - name: KC_DB_URL
               value: jdbc:postgresql://postgres.invoiceflow-infra.svc.cluster.local:5432/keycloak
@@ -41,16 +45,15 @@ spec:
             # Single node; with the default cache it waits for its previous pod to join a cluster
             - name: KC_CACHE
               value: local
-            # Issuer and sign-in pages always use the browser-facing name; pods calling the
-            # Service get token and key endpoints on the internal address instead
+            # Browser-facing issuer (TLS on the Traefik ingress)
             - name: KC_HOSTNAME
-              value: http://auth.invoiceflow.localhost:8080
+              value: https://auth.invoiceflow.localhost:8080
             - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
               value: "true"
             # The admin console is not routed by the ingress, only reachable through make keycloak-admin
             - name: KC_HOSTNAME_ADMIN
               value: http://localhost:18080
-            # HTTPS with locally trusted certificates comes in Stage 4
+            # HTTP inside the cluster; Traefik terminates TLS for the browser
             - name: KC_HTTP_ENABLED
               value: "true"
             - name: KC_PROXY_HEADERS
@@ -106,11 +109,17 @@ spec:
               mountPath: /tmp
             - name: data
               mountPath: /opt/keycloak/data
+            - name: realm-import
+              mountPath: /opt/keycloak/data/import
+              readOnly: true
       volumes:
         - name: tmp
           emptyDir: {}
         - name: data
           emptyDir: {}
+        - name: realm-import
+          configMap:
+            name: keycloak-realm
 ---
 apiVersion: v1
 kind: Service
@@ -137,6 +146,10 @@ metadata:
     app.kubernetes.io/name: keycloak
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - auth.invoiceflow.localhost
+      secretName: auth-invoiceflow-tls
   rules:
     - host: auth.invoiceflow.localhost
       http:

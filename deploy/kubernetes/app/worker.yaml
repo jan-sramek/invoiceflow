@@ -51,7 +51,7 @@ spec:
                   key: password
             - name: ConnectionStrings__Catalog
               value: Host=postgres.invoiceflow-infra.svc.cluster.local;Database=invoiceflow_catalog;Username=catalog_app;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
-            # make app-up fills in the id; tenants come from access tokens in Stage 4
+            # Worker has no user token yet (Stage 5); fixed development tenant
             - name: Tenancy__DevelopmentTenantId
               value: "${DEVELOPMENT_TENANT_ID}"
           # Only the health endpoints listen here; the worker has no Service

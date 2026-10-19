@@ -26,4 +26,4 @@ Angular app for InvoiceFlow (Stage 1: list, detail, upload, edit, lifecycle).
 
 See planning ADR-0017: `core/`, `shared/`, `features/invoices/` with `feature-*`, `ui`, `data-access`, `util`.
 
-Until Keycloak (Stage 4), the shell sends `X-Development-User` (`clerk` / `approver` / `finance`) for authenticated writes.
+In the cluster, sign in with Keycloak (OIDC in `config.json`). Locally, `public/config.json` keeps `developmentUsers: true` so the shell sends `X-Development-User` (`clerk` / `approver` / `finance`).

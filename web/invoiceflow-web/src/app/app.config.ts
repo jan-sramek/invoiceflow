@@ -8,6 +8,7 @@ import {
 import { MatIconRegistry } from '@angular/material/icon';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { provideAuth } from '@core/auth';
 import { provideAppConfig } from '@core/config';
 import { provideErrorHandling } from '@core/error-handling';
 import { provideApiHttp } from '@core/http';
@@ -23,6 +24,7 @@ export const appConfig: ApplicationConfig = {
     // Route parameters arrive as component inputs (`id = input.required<string>()`).
     provideRouter(routes, withComponentInputBinding()),
     provideAppConfig(),
+    provideAuth(),
     provideApiHttp(),
     provideI18n(),
     provideErrorHandling(),

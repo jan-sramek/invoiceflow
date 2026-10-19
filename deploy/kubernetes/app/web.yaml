@@ -71,6 +71,10 @@ spec:
               mountPath: /var/run
             - name: logs
               mountPath: /var/log/nginx
+            - name: config
+              mountPath: /usr/share/nginx/html/config.json
+              subPath: config.json
+              readOnly: true
       volumes:
         - name: tmp
           emptyDir: {}
@@ -80,6 +84,9 @@ spec:
           emptyDir: {}
         - name: logs
           emptyDir: {}
+        - name: config
+          configMap:
+            name: web-config
 ---
 apiVersion: v1
 kind: Service
