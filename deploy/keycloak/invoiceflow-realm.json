@@ -1,0 +1,120 @@
+{
+  "realm": "invoiceflow",
+  "enabled": true,
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "sslRequired": "external",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      { "name": "clerk", "description": "Uploads and edits invoices" },
+      { "name": "approver", "description": "Approves or rejects invoices" },
+      { "name": "finance", "description": "Marks invoices paid" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "invoiceflow-web",
+      "name": "InvoiceFlow web",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "rootUrl": "",
+      "baseUrl": "/",
+      "redirectUris": [
+        "http://invoiceflow.localhost:8080/*",
+        "http://localhost:4200/*"
+      ],
+      "webOrigins": [
+        "http://invoiceflow.localhost:8080",
+        "http://localhost:4200"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://invoiceflow.localhost:8080/*##http://localhost:4200/*"
+      },
+      "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "email"],
+      "optionalClientScopes": ["address", "phone", "offline_access"],
+      "protocolMappers": [
+        {
+          "name": "audience-invoiceflow-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "invoiceflow-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "tenant_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.value": "01a130f4-cc70-7419-9b64-feec3b283b96",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "invoiceflow-api",
+      "name": "InvoiceFlow API",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "clerk",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Clara",
+      "lastName": "Clerk",
+      "email": "clerk@invoiceflow.local",
+      "realmRoles": ["clerk"],
+      "credentials": [{ "type": "password", "value": "changeme", "temporary": false }]
+    },
+    {
+      "username": "approver",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Adam",
+      "lastName": "Approver",
+      "email": "approver@invoiceflow.local",
+      "realmRoles": ["approver"],
+      "credentials": [{ "type": "password", "value": "changeme", "temporary": false }]
+    },
+    {
+      "username": "finance",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Fiona",
+      "lastName": "Finance",
+      "email": "finance@invoiceflow.local",
+      "realmRoles": ["finance"],
+      "credentials": [{ "type": "password", "value": "changeme", "temporary": false }]
+    }
+  ]
+}

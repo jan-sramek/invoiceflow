@@ -16,7 +16,7 @@ They run **locally only**; CI does not start a cluster yet (that is Stage 8).
 
 `tests/smoke.spec.ts` (tagged `@smoke`):
 
-1. opens the app and makes sure it acts as the development user **Clara Clerk** (`clerk`, the default of `DevUserService`);
+1. opens the app and ensures the signed-in user is **Clara Clerk** (Keycloak on the cluster, or the development switcher on Windows);
 2. goes to **Upload** and uploads `fixtures/invoice-smoke.pdf`;
 3. follows the new invoice's link from the upload result and checks that the same invoice is on the **Invoices** list.
 
@@ -26,10 +26,13 @@ Each run appends a unique comment to the PDF, so repeated runs never end up as d
 
 ```sh
 make up          # VM and cluster, if not running yet
-make stack-up    # PostgreSQL, SeaweedFS, databases and the app (or just make app-up if the rest is in place)
+make stack-up    # PostgreSQL, SeaweedFS, Keycloak, databases and the app
+make trust-local-ca  # once: trust the auth.invoiceflow.localhost certificate
 make e2e-install # once: npm ci and the Chromium browser for Playwright
 make e2e-smoke
 ```
+
+Sign in as `clerk` when Keycloak asks (password from `kubectl -n invoiceflow-infra get secret keycloak-users -o jsonpath='{.data.clerk}' | base64 -d`).
 
 ## Run it (Windows, local API + `ng serve`)
 

@@ -41,7 +41,7 @@ endif
 	postgres-up postgres-down postgres-password db-forward psql \
 	seaweedfs-up seaweedfs-down s3-credentials s3-forward s3-check images web-image \
 	app-up app-down app-check rabbitmq-up rabbitmq-down rabbitmq-password rabbitmq-ui \
-	keycloak-image keycloak-up keycloak-down keycloak-password keycloak-admin \
+	keycloak-image keycloak-up keycloak-down keycloak-password keycloak-admin trust-local-ca \
 	db-up db-migrate db-down stack-up e2e-install e2e-typecheck e2e-smoke
 
 help:
@@ -222,6 +222,9 @@ web-image: doctor ## Build the Angular web image and push it to the cluster regi
 app-up: images db-migrate ## Build the images, migrate the databases and deploy the API, worker and web
 	@./scripts/create-local-secrets.sh
 	@$(KUBECTL) apply -f deploy/kubernetes/namespace.yaml
+	@$(KUBECTL) -n $(APP_NS) create configmap web-config \
+		--from-file=config.json=deploy/kubernetes/app/web-config.json \
+		--dry-run=client -o yaml | $(KUBECTL) apply -f -
 	@for manifest in deploy/kubernetes/app/*.yaml; do \
 		sed -e 's/$${IMAGE_TAG}/$(IMAGE_TAG)/g' -e 's/$${DEVELOPMENT_TENANT_ID}/$(DEVELOPMENT_TENANT_ID)/g' $$manifest; echo ---; \
 	done | $(KUBECTL) apply -f -
@@ -231,10 +234,11 @@ app-up: images db-migrate ## Build the images, migrate the databases and deploy 
 	@echo "App: http://invoiceflow.localhost:8080/"
 	@echo "API: http://invoiceflow.localhost:8080/api"
 
-stack-up: postgres-up seaweedfs-up db-up app-up ## Deploy PostgreSQL, SeaweedFS, the databases and the app, in that order (run make up first)
+stack-up: postgres-up seaweedfs-up keycloak-up db-up app-up ## Deploy PostgreSQL, SeaweedFS, Keycloak, the databases and the app (run make up first)
 
 app-down: doctor ## Remove the API, worker and web
 	@$(KUBECTL) delete -f deploy/kubernetes/app/ --ignore-not-found
+	@$(KUBECTL) -n $(APP_NS) delete configmap/web-config --ignore-not-found
 
 app-check: ## Send a request through the ingress and print where to find its log line and trace
 	@trace=$$(curl -s -o /dev/null -D - http://invoiceflow.localhost:8080/api/v1/app-check \
@@ -266,19 +270,27 @@ keycloak-image: doctor ## Build the Keycloak image and push it to the cluster re
 	@docker buildx build --quiet --push --tag $(REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG) deploy/images/keycloak >/dev/null
 	@echo "Pushed $(REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG)"
 
-keycloak-up: keycloak-image ## Install Keycloak with its own database in PostgreSQL (run postgres-up first)
+keycloak-up: keycloak-image ## Install Keycloak with the invoiceflow realm (run postgres-up first)
 	@./scripts/create-local-secrets.sh
 	@./scripts/postgres-database.sh keycloak keycloak-db
+	@./scripts/local-tls.sh
+	@$(KUBECTL) -n $(INFRA_NS) create configmap keycloak-realm \
+		--from-file=invoiceflow-realm.json=deploy/keycloak/invoiceflow-realm.json \
+		--dry-run=client -o yaml | $(KUBECTL) apply -f -
 	@sed 's/$${KEYCLOAK_TAG}/$(KEYCLOAK_TAG)/g' deploy/kubernetes/keycloak/keycloak.yaml | $(KUBECTL) apply -f -
 	@$(KUBECTL) rollout status deployment/keycloak --namespace $(INFRA_NS) --timeout 5m
-	@echo "Sign-in page: http://auth.invoiceflow.localhost:8080/realms/master/account"
+	@./scripts/keycloak-users.sh
+	@echo "Sign-in: https://auth.invoiceflow.localhost:8080/realms/invoiceflow/account"
+	@echo "Trust the local CA once: make trust-local-ca"
 	@echo "Admin console: make keycloak-admin"
+	@echo "Persona passwords: kubectl -n $(INFRA_NS) get secret keycloak-users -o jsonpath='{.data.clerk}' | base64 -d"
 
 keycloak-down: doctor ## Remove Keycloak, including its database and credentials
 	@$(KUBECTL) delete -f deploy/kubernetes/keycloak/ --ignore-not-found
+	@$(KUBECTL) -n $(INFRA_NS) delete configmap/keycloak-realm secret/auth-invoiceflow-tls \
+		secret/keycloak-db secret/keycloak-admin secret/keycloak-users --ignore-not-found
 	@printf '%s\n' 'DROP DATABASE IF EXISTS keycloak WITH (FORCE);' 'DROP ROLE IF EXISTS keycloak;' \
 		| $(KUBECTL) exec -i postgres-0 --namespace $(INFRA_NS) -- psql -U postgres -v ON_ERROR_STOP=1 -q
-	@$(KUBECTL) delete secret/keycloak-db secret/keycloak-admin --namespace $(INFRA_NS) --ignore-not-found
 
 keycloak-password: ## Print the password of the temporary Keycloak admin
 	@$(KUBECTL) get secret keycloak-admin --namespace $(INFRA_NS) -o jsonpath='{.data.password}' | base64 -d; echo
@@ -286,6 +298,11 @@ keycloak-password: ## Print the password of the temporary Keycloak admin
 keycloak-admin: doctor ## Forward the Keycloak admin console to localhost:18080 (Ctrl+C to stop)
 	@echo "Admin console: http://localhost:$(KEYCLOAK_ADMIN_PORT)/admin (user admin, password from make keycloak-password)"
 	@$(KUBECTL) port-forward service/keycloak $(KEYCLOAK_ADMIN_PORT):8080 --namespace $(INFRA_NS)
+
+trust-local-ca: ## Add the InvoiceFlow local CA to the macOS login keychain (run once after make keycloak-up)
+	@security add-trusted-cert -d -r trustRoot -k "$(HOME)/Library/Keychains/login.keychain-db" \
+		"$(HOME)/.local/share/invoiceflow/tls/ca.crt"
+	@echo "Trusted $(HOME)/.local/share/invoiceflow/tls/ca.crt"
 
 # The tests drive the app in the cluster through the ingress, so run make stack-up (or app-up) first; see tests/e2e/README.md
 e2e-install: ## Install the end-to-end test dependencies and the Chromium browser for Playwright
@@ -296,4 +313,5 @@ e2e-typecheck: ## Typecheck the end-to-end tests
 	@npm run typecheck --prefix tests/e2e
 
 e2e-smoke: ## Upload an invoice through the app in the cluster and check it is listed (BASE_URL overrides the address)
-	@npm run test:smoke --prefix tests/e2e
+	@E2E_CLERK_PASSWORD="$$($(KUBECTL) get secret keycloak-users --namespace $(INFRA_NS) -o jsonpath='{.data.clerk}' | base64 -d)" \
+		npm run test:smoke --prefix tests/e2e

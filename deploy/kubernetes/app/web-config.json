@@ -1,0 +1,8 @@
+{
+  "apiBaseUrl": "/api",
+  "developmentUsers": false,
+  "oidc": {
+    "authority": "https://auth.invoiceflow.localhost:8080/realms/invoiceflow",
+    "clientId": "invoiceflow-web"
+  }
+}

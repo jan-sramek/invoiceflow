@@ -7,6 +7,10 @@
       "invoices": "Invoices",
       "upload": "Upload"
     },
+    "auth": {
+      "signIn": "Sign in",
+      "signOut": "Sign out"
+    },
     "devUser": {
       "label": "Acting as",
       "hint": "Development sign-in: sent as the X-Development-User header",

@@ -86,7 +86,7 @@ A status of *field* means the code appears only inside `errors`.
 
 | Code | Status | Meaning | Params | What to do |
 | --- | --- | --- | --- | --- |
-| <a id="auth.user_required"></a>`auth.user_required` | 401 | The request needs a signed-in user. | | Sign in. Until Keycloak sign-in exists, send `X-Development-User: clerk`, `approver` or `finance`. |
+| <a id="auth.user_required"></a>`auth.user_required` | 401 | The request needs a signed-in user. | | Sign in with Keycloak (Bearer access token). When `Authentication:DevelopmentUsers` is on, you may send `X-Development-User: clerk`, `approver` or `finance` instead. |
 
 ## Concurrency and availability
 

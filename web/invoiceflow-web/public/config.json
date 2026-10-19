@@ -1,3 +1,4 @@
 {
-  "apiBaseUrl": "/api"
+  "apiBaseUrl": "/api",
+  "developmentUsers": true
 }

@@ -26,7 +26,11 @@
   </nav>
 
   <div class="tools">
-    <if-dev-user-switcher />
+    @if (usesOidc()) {
+      <if-auth-user />
+    } @else if (developmentUsers()) {
+      <if-dev-user-switcher />
+    }
     <if-language-switcher />
   </div>
 </header>

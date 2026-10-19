@@ -13,16 +13,31 @@ test.describe('smoke', { tag: '@smoke' }, () => {
     const pdf = Buffer.concat([await readFile(fixture), Buffer.from(`%smoke-run ${run}\n`)]);
 
     await page.goto('/');
-    await expect(page).toHaveURL(/\/invoices$/);
 
-    // The development user comes from the switcher (see DevUserService); the default is the clerk.
+    // Cluster: Keycloak OIDC. Local Windows: development persona switcher.
+    const signIn = page.getByRole('button', { name: /Sign in/i });
     const switcher = page.getByRole('button', { name: /Acting as/ });
-    await expect(switcher).toBeVisible();
-    if (!(await switcher.innerText()).includes('Clara Clerk')) {
-      await switcher.click();
-      await page.getByRole('menuitem', { name: 'Clara Clerk' }).click();
+    if (await signIn.isVisible().catch(() => false)) {
+      const password = process.env['E2E_CLERK_PASSWORD'];
+      if (!password) {
+        throw new Error('Set E2E_CLERK_PASSWORD to the Keycloak clerk user password (see make e2e-smoke).');
+      }
+      await signIn.click();
+      await page.locator('#username').fill('clerk');
+      await page.locator('#password').fill(password);
+      await page.locator('#kc-login').click();
+      await expect(page.getByRole('button', { name: /Clara Clerk/i })).toBeVisible({ timeout: 30_000 });
+    } else {
+      await expect(page).toHaveURL(/\/invoices$/);
+      await expect(switcher).toBeVisible();
+      if (!(await switcher.innerText()).includes('Clara Clerk')) {
+        await switcher.click();
+        await page.getByRole('menuitem', { name: 'Clara Clerk' }).click();
+      }
+      await expect(switcher).toContainText('Clara Clerk');
     }
-    await expect(switcher).toContainText('Clara Clerk');
+
+    await expect(page).toHaveURL(/\/invoices$/);
 
     await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Upload' }).click();
     await expect(page).toHaveURL(/\/invoices\/upload$/);

@@ -52,12 +52,19 @@ spec:
                   key: password
             - name: ConnectionStrings__Catalog
               value: Host=postgres.invoiceflow-infra.svc.cluster.local;Database=invoiceflow_catalog;Username=catalog_app;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
-            # make app-up fills in the id; tenants come from access tokens in Stage 4
+            # Escape hatch for jobs without a user token; access tokens carry tenant_id
             - name: Tenancy__DevelopmentTenantId
               value: "${DEVELOPMENT_TENANT_ID}"
-            # X-Development-User personas until Keycloak sign-in in Stage 4
             - name: Authentication__DevelopmentUsers
-              value: "true"
+              value: "false"
+            - name: Authentication__Authority
+              value: http://keycloak.invoiceflow-infra.svc.cluster.local:8080/realms/invoiceflow
+            - name: Authentication__ValidIssuer
+              value: https://auth.invoiceflow.localhost:8080/realms/invoiceflow
+            - name: Authentication__Audience
+              value: invoiceflow-api
+            - name: Authentication__RequireHttpsMetadata
+              value: "false"
             - name: DocumentStorage__ServiceUrl
               value: http://seaweedfs.invoiceflow-infra.svc.cluster.local:8333
             - name: DocumentStorage__Bucket

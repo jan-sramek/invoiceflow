@@ -2,11 +2,13 @@ using System.Text.Json.Serialization;
 using InvoiceFlow.Api.Authentication;
 using InvoiceFlow.Api.Errors;
 using InvoiceFlow.Application;
+using InvoiceFlow.Application.Abstractions.Context;
 using InvoiceFlow.Domain.Invoices;
 using InvoiceFlow.Infrastructure;
 using InvoiceFlow.ServiceDefaults;
 using InvoiceFlow.ServiceDefaults.Health;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Scalar.AspNetCore;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -23,6 +25,8 @@ builder.Services.AddHealthChecks().AddCatalogCheck(HealthEndpoints.ReadyTag);
 
 builder.Services.AddErrorContract();
 builder.Services.AddUserAuthentication(builder.Configuration);
+builder.Services.RemoveAll<ITenantContext>();
+builder.Services.AddScoped<ITenantContext, HttpTenantContext>();
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
     // A misspelt property would otherwise be dropped without the client noticing

@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace InvoiceFlow.Api.Tests;
 
 /// <summary>The API plus the controllers of this test project, which exist only to exercise the pipeline.</summary>
-public sealed class TestEndpointsApi : TestServiceFactory<Program>
+public class TestEndpointsApi : TestServiceFactory<Program>
 {
     public bool DevelopmentUsers { get; init; } = true;
 
