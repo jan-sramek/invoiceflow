@@ -97,3 +97,14 @@ A status of *field* means the code appears only inside `errors`.
 | <a id="tenant.unavailable"></a>`tenant.unavailable` | 503 | Your organisation's data store is not reachable. | | Retry after `Retry-After` seconds. |
 | <a id="storage.unavailable"></a>`storage.unavailable` | 503 | Document storage is not reachable. | | Retry after `Retry-After` seconds. |
 | <a id="server.unexpected"></a>`server.unexpected` | 500 | An unexpected error occurred. | | Report it with the `traceId`. |
+
+## Extraction
+
+Stored on the invoice when automatic extraction fails (not returned as HTTP Problem Details from the API).
+
+| Code | Status | Meaning | Params | What to do |
+| --- | --- | --- | --- | --- |
+| <a id="extraction.no_text_layer"></a>`extraction.no_text_layer` | — | The PDF has no text layer (typically a scan). | | Enter fields manually or cancel. OCR is not supported yet. |
+| <a id="extraction.too_many_pages"></a>`extraction.too_many_pages` | — | The PDF has more pages than the configured limit. | | Upload a shorter document or enter fields manually. |
+| <a id="extraction.pdf_unreadable"></a>`extraction.pdf_unreadable` | — | The PDF is encrypted or could not be parsed. | | Re-export the PDF or enter fields manually. |
+| <a id="extraction.invalid_model_output"></a>`extraction.invalid_model_output` | — | The model did not return usable field JSON. | | Retry extraction later or enter fields manually. |

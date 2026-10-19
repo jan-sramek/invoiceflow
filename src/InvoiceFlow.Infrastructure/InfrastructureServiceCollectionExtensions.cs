@@ -135,6 +135,7 @@ public static class InfrastructureServiceCollectionExtensions
             .Bind(section)
             .ValidateDataAnnotations()
             .ValidateOnStart();
+        services.AddSingleton<PdfPigTextExtractor>();
         services.AddHttpClient<IInvoiceExtractor, OllamaInvoiceExtractor>((provider, client) =>
         {
             DocumentExtractionOptions options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<DocumentExtractionOptions>>().Value;

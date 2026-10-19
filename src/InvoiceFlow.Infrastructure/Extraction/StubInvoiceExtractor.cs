@@ -8,9 +8,9 @@ namespace InvoiceFlow.Infrastructure.Extraction;
 /// </summary>
 internal sealed class StubInvoiceExtractor : IInvoiceExtractor
 {
-    public Task<InvoiceFields> ExtractAsync(Stream pdf, CancellationToken cancellationToken)
+    public Task<ExtractionResult> ExtractAsync(Stream pdf, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(pdf);
-        return Task.FromResult(InvoiceFields.Empty);
+        return Task.FromResult<ExtractionResult>(new ExtractionResult.Succeeded(InvoiceFields.Empty));
     }
 }

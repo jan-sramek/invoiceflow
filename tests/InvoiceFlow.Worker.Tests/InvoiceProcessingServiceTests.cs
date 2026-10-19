@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
+using InvoiceFlow.Application.Abstractions.Extraction;
 using InvoiceFlow.Application.Abstractions.Persistence;
+using InvoiceFlow.Application.Errors;
 using InvoiceFlow.Domain.Common;
 using InvoiceFlow.Domain.Invoices;
 using InvoiceFlow.Infrastructure.Documents;
@@ -46,6 +48,35 @@ public class InvoiceProcessingServiceTests
     }
 
     [Fact]
+    public async Task ProcessAsync_BusinessExtractionFailure_FailsWithoutThrowing()
+    {
+        var documentId = Guid.CreateVersion7(Now);
+        byte[] pdf = MinimalPdf.EmptyPage();
+        string sha256 = Convert.ToHexString(SHA256.HashData(pdf)).ToLowerInvariant();
+        var document = InvoiceDocument.Create(documentId, "tenant/doc", "invoice.pdf", pdf.Length, sha256);
+        var invoice = Invoice.Upload(Clerk, Now, document);
+
+        var storage = new InMemoryDocumentStorage();
+        await using (var content = new MemoryStream(pdf, writable: false))
+        {
+            await storage.PutAsync(
+                document.StorageKey, content, InvoiceDocument.PdfContentType, pdf.Length, TestContext.Current.CancellationToken);
+        }
+
+        var service = new InvoiceProcessingService(
+            new FakeInvoiceRepository(invoice),
+            storage,
+            new FixedExtractor(new ExtractionResult.Failed(ApplicationErrors.Extraction.NoTextLayer)),
+            new FakeUnitOfWork(),
+            TimeProvider.System,
+            NullLogger<InvoiceProcessingService>.Instance);
+
+        await service.ProcessAsync(invoice.Id, TestContext.Current.CancellationToken);
+
+        invoice.Status.ShouldBe(InvoiceStatus.ExtractionFailed);
+    }
+
+    [Fact]
     public async Task ProcessAsync_StorageFailure_FailsExtraction()
     {
         var documentId = Guid.CreateVersion7(Now);
@@ -65,6 +96,12 @@ public class InvoiceProcessingServiceTests
         await service.ProcessAsync(invoice.Id, TestContext.Current.CancellationToken);
 
         invoice.Status.ShouldBe(InvoiceStatus.ExtractionFailed);
+    }
+
+    private sealed class FixedExtractor(ExtractionResult result) : IInvoiceExtractor
+    {
+        public Task<ExtractionResult> ExtractAsync(Stream pdf, CancellationToken cancellationToken) =>
+            Task.FromResult(result);
     }
 
     private sealed class FakeInvoiceRepository(Invoice invoice) : IInvoiceRepository

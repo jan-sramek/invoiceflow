@@ -70,4 +70,19 @@ public static class ApplicationErrors
         [Description("Idempotency key required")]
         public const string KeyRequired = "idempotency.key_required";
     }
+
+    public static class Extraction
+    {
+        [Description("Scanned document has no text layer")]
+        public const string NoTextLayer = "extraction.no_text_layer";
+
+        [Description("PDF has too many pages")]
+        public const string TooManyPages = "extraction.too_many_pages";
+
+        [Description("PDF is encrypted or unreadable")]
+        public const string PdfUnreadable = "extraction.pdf_unreadable";
+
+        [Description("Model output was not usable")]
+        public const string InvalidModelOutput = "extraction.invalid_model_output";
+    }
 }

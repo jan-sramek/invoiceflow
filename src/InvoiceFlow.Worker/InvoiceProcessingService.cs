@@ -43,12 +43,23 @@ internal sealed partial class InvoiceProcessingService(
         try
         {
             await using Stream pdf = await storage.OpenReadAsync(invoice.Document.StorageKey, cancellationToken);
-            InvoiceFields fields = await extractor.ExtractAsync(pdf, cancellationToken);
+            ExtractionResult result = await extractor.ExtractAsync(pdf, cancellationToken);
 
-            invoice.RequireReview(WorkerActor, time.GetUtcNow());
-            if (fields != InvoiceFields.Empty)
+            switch (result)
             {
-                invoice.UpdateFields(WorkerActor, time.GetUtcNow(), fields);
+                case ExtractionResult.Succeeded succeeded:
+                    invoice.RequireReview(WorkerActor, time.GetUtcNow());
+                    if (succeeded.Fields != InvoiceFields.Empty)
+                    {
+                        invoice.UpdateFields(WorkerActor, time.GetUtcNow(), succeeded.Fields);
+                    }
+
+                    break;
+                case ExtractionResult.Failed failed:
+                    FailProcessing(invoice, failed.Code);
+                    break;
+                default:
+                    throw new InvalidOperationException($"Unexpected extraction result {result.GetType().Name}.");
             }
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
