@@ -10,6 +10,14 @@ namespace InvoiceFlow.Infrastructure.Persistence;
 
 internal sealed class UnitOfWork(TenantDbContext dbContext) : IUnitOfWork
 {
+    private readonly List<Func<CancellationToken, Task>> _afterCommit = [];
+
+    public void AfterCommit(Func<CancellationToken, Task> callback)
+    {
+        ArgumentNullException.ThrowIfNull(callback);
+        _afterCommit.Add(callback);
+    }
+
     public async Task CommitAsync(CancellationToken cancellationToken)
     {
         AggregateRoot[] aggregates =
@@ -37,6 +45,13 @@ internal sealed class UnitOfWork(TenantDbContext dbContext) : IUnitOfWork
         foreach (AggregateRoot aggregate in aggregates)
         {
             aggregate.ClearDomainEvents();
+        }
+
+        Func<CancellationToken, Task>[] callbacks = [.. _afterCommit];
+        _afterCommit.Clear();
+        foreach (Func<CancellationToken, Task> callback in callbacks)
+        {
+            await callback(cancellationToken);
         }
     }
 }

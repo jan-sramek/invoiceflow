@@ -31,6 +31,11 @@
     <PackageVersion Include="AWSSDK.S3" Version="4.0.19" />
   </ItemGroup>
 
+  <ItemGroup Label="Messaging">
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.12" />
+    <PackageVersion Include="RabbitMQ.Client" Version="7.1.2" />
+  </ItemGroup>
+
   <ItemGroup Label="Persistence">
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
     <!-- Pinned so the provider's older transitive EF Core matches the design-time package -->

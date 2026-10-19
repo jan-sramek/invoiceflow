@@ -8,8 +8,10 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddMessageTenantContext();
+builder.Services.AddScoped<InvoiceProcessingService>();
 builder.Services.AddHealthChecks().AddCatalogCheck(HealthEndpoints.ReadyTag);
-builder.Services.AddHostedService<PlaceholderWorker>();
+builder.Services.AddHostedService<InvoiceProcessingConsumer>();
 
 WebApplication app = builder.Build();
 

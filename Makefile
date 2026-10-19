@@ -234,7 +234,7 @@ app-up: images db-migrate ## Build the images, migrate the databases and deploy 
 	@echo "App: http://invoiceflow.localhost:8080/"
 	@echo "API: http://invoiceflow.localhost:8080/api"
 
-stack-up: postgres-up seaweedfs-up keycloak-up db-up app-up ## Deploy PostgreSQL, SeaweedFS, Keycloak, the databases and the app (run make up first)
+stack-up: postgres-up seaweedfs-up keycloak-up rabbitmq-up db-up app-up ## Deploy PostgreSQL, SeaweedFS, Keycloak, RabbitMQ, the databases and the app (run make up first)
 
 app-down: doctor ## Remove the API, worker and web
 	@$(KUBECTL) delete -f deploy/kubernetes/app/ --ignore-not-found
@@ -253,6 +253,7 @@ rabbitmq-up: doctor ## Install RabbitMQ in the infra namespace, with one user pe
 	@$(KUBECTL) apply -f deploy/kubernetes/rabbitmq/
 	@$(KUBECTL) rollout status statefulset/rabbitmq --namespace $(INFRA_NS) --timeout 5m
 	@./scripts/rabbitmq-users.sh
+	@./scripts/rabbitmq-topology.sh
 
 rabbitmq-down: doctor ## Remove RabbitMQ, including its data and credentials
 	@$(KUBECTL) delete -f deploy/kubernetes/rabbitmq/ --ignore-not-found

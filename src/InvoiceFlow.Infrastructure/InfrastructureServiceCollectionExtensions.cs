@@ -1,7 +1,11 @@
 using InvoiceFlow.Application.Abstractions.Context;
 using InvoiceFlow.Application.Abstractions.Documents;
+using InvoiceFlow.Application.Abstractions.Extraction;
+using InvoiceFlow.Application.Abstractions.Messaging;
 using InvoiceFlow.Application.Abstractions.Persistence;
 using InvoiceFlow.Infrastructure.Documents;
+using InvoiceFlow.Infrastructure.Extraction;
+using InvoiceFlow.Infrastructure.Messaging;
 using InvoiceFlow.Infrastructure.Persistence;
 using InvoiceFlow.Infrastructure.Persistence.Catalog;
 using InvoiceFlow.Infrastructure.Persistence.Idempotency;
@@ -40,7 +44,19 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IIdempotencyStore, IdempotencyStore>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddDocumentStorage(configuration);
+        services.AddMessaging(configuration);
+        services.AddExtraction(configuration);
 
+        return services;
+    }
+
+    /// <summary>
+    /// Uses the tenant id from each RabbitMQ message instead of a fixed development tenant.
+    /// </summary>
+    public static IServiceCollection AddMessageTenantContext(this IServiceCollection services)
+    {
+        services.RemoveAll<ITenantContext>();
+        services.AddScoped<ITenantContext, MessageTenantContext>();
         return services;
     }
 
@@ -87,6 +103,44 @@ public static class InfrastructureServiceCollectionExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
         services.AddSingleton<IDocumentStorage, S3DocumentStorage>();
+    }
+
+    private static void AddMessaging(this IServiceCollection services, IConfiguration configuration)
+    {
+        IConfigurationSection section = configuration.GetSection(RabbitMqOptions.SectionName);
+        if (!section.Exists() || string.IsNullOrWhiteSpace(section["Host"]))
+        {
+            services.AddOptions<RabbitMqOptions>().Bind(section);
+            services.AddSingleton<IInvoiceEventPublisher, NoOpInvoiceEventPublisher>();
+            return;
+        }
+
+        services.AddOptions<RabbitMqOptions>()
+            .Bind(section)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddSingleton<IInvoiceEventPublisher, RabbitMqInvoiceEventPublisher>();
+    }
+
+    private static void AddExtraction(this IServiceCollection services, IConfiguration configuration)
+    {
+        IConfigurationSection section = configuration.GetSection(DocumentExtractionOptions.SectionName);
+        if (!section.Exists() || string.IsNullOrWhiteSpace(section["ServiceUrl"]))
+        {
+            services.AddSingleton<IInvoiceExtractor, StubInvoiceExtractor>();
+            return;
+        }
+
+        services.AddOptions<DocumentExtractionOptions>()
+            .Bind(section)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddHttpClient<IInvoiceExtractor, OllamaInvoiceExtractor>((provider, client) =>
+        {
+            DocumentExtractionOptions options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<DocumentExtractionOptions>>().Value;
+            client.BaseAddress = new Uri(options.ServiceUrl.TrimEnd('/') + "/");
+            client.Timeout = TimeSpan.FromMinutes(2);
+        });
     }
 
     private static void AddCatalog(this IServiceCollection services, IConfiguration configuration)

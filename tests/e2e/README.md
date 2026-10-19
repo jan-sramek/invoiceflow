@@ -26,7 +26,7 @@ Each run appends a unique comment to the PDF, so repeated runs never end up as d
 
 ```sh
 make up          # VM and cluster, if not running yet
-make stack-up    # PostgreSQL, SeaweedFS, Keycloak, databases and the app
+make stack-up    # PostgreSQL, SeaweedFS, Keycloak, RabbitMQ, databases and the app
 make trust-local-ca  # once: trust the auth.invoiceflow.localhost certificate
 make e2e-install # once: npm ci and the Chromium browser for Playwright
 make e2e-smoke
