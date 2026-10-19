@@ -79,6 +79,17 @@ spec:
                 secretKeyRef:
                   name: document-storage
                   key: secret-key
+            - name: RabbitMq__Host
+              value: rabbitmq.invoiceflow-infra.svc.cluster.local
+            - name: RabbitMq__VirtualHost
+              value: invoiceflow
+            - name: RabbitMq__UserName
+              value: invoiceflow-api
+            - name: RabbitMq__Password
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-api
+                  key: password
           ports:
             - name: http
               containerPort: 8080

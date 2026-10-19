@@ -105,6 +105,7 @@ public class PipelineTests
             .AddScoped<IInvoiceReadService, NoInvoices>()
             .AddScoped<IInvoiceRepository, NoInvoices>()
             .AddSingleton<IDocumentStorage, NoDocuments>()
+            .AddSingleton<IInvoiceEventPublisher, NoEvents>()
             .AddScoped<IIdempotencyStore, NoIdempotency>()
             .AddScoped<ITenantContext, FixedTenant>()
             .AddScoped<ICurrentUser, NoUser>()
@@ -179,6 +180,10 @@ public class PipelineTests
 
     private sealed class RecordingUnitOfWork(Calls calls, bool fail) : IUnitOfWork
     {
+        public void AfterCommit(Func<CancellationToken, Task> callback)
+        {
+        }
+
         public Task CommitAsync(CancellationToken cancellationToken)
         {
             calls.Add("commit");
@@ -243,6 +248,12 @@ public class PipelineTests
             Task.CompletedTask;
 
         public Task AbandonAsync(string key, string userId, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+    }
+
+    private sealed class NoEvents : IInvoiceEventPublisher
+    {
+        public Task PublishUploadedAsync(TenantId tenantId, InvoiceId invoiceId, CancellationToken cancellationToken) =>
             Task.CompletedTask;
     }
 }

@@ -50,7 +50,9 @@ public class WorkerHostTests
     {
         WorkerFactory worker = new();
         worker.StartServer();
-        PlaceholderWorker background = worker.Services.GetServices<IHostedService>().OfType<PlaceholderWorker>().Single();
+        InvoiceProcessingConsumer background = worker.Services.GetServices<IHostedService>()
+            .OfType<InvoiceProcessingConsumer>()
+            .Single();
         FakeLogCollector logs = worker.Logs;
 
         background.ExecuteTask.ShouldNotBeNull().IsCompleted.ShouldBeFalse();

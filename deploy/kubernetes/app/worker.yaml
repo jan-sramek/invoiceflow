@@ -51,9 +51,38 @@ spec:
                   key: password
             - name: ConnectionStrings__Catalog
               value: Host=postgres.invoiceflow-infra.svc.cluster.local;Database=invoiceflow_catalog;Username=catalog_app;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
-            # Worker has no user token yet (Stage 5); fixed development tenant
+            # Fallback when no message is being processed (health / startup)
             - name: Tenancy__DevelopmentTenantId
               value: "${DEVELOPMENT_TENANT_ID}"
+            - name: DocumentStorage__ServiceUrl
+              value: http://seaweedfs.invoiceflow-infra.svc.cluster.local:8333
+            - name: DocumentStorage__Bucket
+              value: invoiceflow-documents
+            - name: DocumentStorage__AccessKey
+              valueFrom:
+                secretKeyRef:
+                  name: document-storage
+                  key: access-key
+            - name: DocumentStorage__SecretKey
+              valueFrom:
+                secretKeyRef:
+                  name: document-storage
+                  key: secret-key
+            - name: RabbitMq__Host
+              value: rabbitmq.invoiceflow-infra.svc.cluster.local
+            - name: RabbitMq__VirtualHost
+              value: invoiceflow
+            - name: RabbitMq__UserName
+              value: invoiceflow-worker
+            - name: RabbitMq__Password
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-worker
+                  key: password
+            - name: DocumentExtraction__ServiceUrl
+              value: http://ollama.invoiceflow.svc.cluster.local:11434
+            - name: DocumentExtraction__Model
+              value: qwen3:0.6b
           # Only the health endpoints listen here; the worker has no Service
           ports:
             - name: http

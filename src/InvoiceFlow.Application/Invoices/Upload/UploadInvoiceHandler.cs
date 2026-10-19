@@ -6,6 +6,7 @@ using InvoiceFlow.Application.Abstractions.Messaging;
 using InvoiceFlow.Application.Abstractions.Persistence;
 using InvoiceFlow.Application.Errors;
 using InvoiceFlow.Domain.Invoices;
+using InvoiceFlow.Domain.Tenants;
 
 namespace InvoiceFlow.Application.Invoices.Upload;
 
@@ -15,6 +16,8 @@ internal sealed class UploadInvoiceHandler(
     IIdempotencyStore idempotency,
     ITenantContext tenant,
     ICurrentUser user,
+    IUnitOfWork unitOfWork,
+    IInvoiceEventPublisher events,
     TimeProvider time) : ICommandHandler<UploadInvoiceCommand, InvoiceId>
 {
     public async Task<InvoiceId> HandleAsync(UploadInvoiceCommand command, CancellationToken cancellationToken)
@@ -66,6 +69,10 @@ internal sealed class UploadInvoiceHandler(
         var invoice = Invoice.Upload(user.Actor, now, document, duplicateOf);
         invoices.Add(invoice);
         await idempotency.CompleteAsync(key, userId, invoice.Id.Value, cancellationToken);
+
+        TenantId tenantId = tenant.TenantId;
+        InvoiceId invoiceId = invoice.Id;
+        unitOfWork.AfterCommit(ct => events.PublishUploadedAsync(tenantId, invoiceId, ct));
 
         return invoice.Id;
     }

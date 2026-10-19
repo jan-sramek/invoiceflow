@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="InvoiceFlow.Integration.Tests" />
+    <InternalsVisibleTo Include="InvoiceFlow.Worker" />
+    <InternalsVisibleTo Include="InvoiceFlow.Worker.Tests" />
   </ItemGroup>
 
   <ItemGroup>
@@ -13,9 +15,11 @@
     <PackageReference Include="EFCore.NamingConventions" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="RabbitMQ.Client" />
   </ItemGroup>
 
 </Project>
