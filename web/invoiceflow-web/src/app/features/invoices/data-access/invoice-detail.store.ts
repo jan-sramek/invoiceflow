@@ -219,6 +219,12 @@ export const InvoiceDetailStore = signalStore(
         enterManually(): void {
           write({ send: (etag) => api.act(id(), 'enter-manually', etag), success: 'invoices.detail.enteredManually' });
         },
+        retryExtraction(): void {
+          write({
+            send: (etag) => api.act(id(), 'retry-extraction', etag),
+            success: 'invoices.detail.extractionRetried',
+          });
+        },
         submit(): void {
           write({ send: (etag) => api.act(id(), 'submit', etag), success: 'invoices.detail.submitted' });
         },

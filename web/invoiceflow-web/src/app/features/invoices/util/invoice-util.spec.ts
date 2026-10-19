@@ -30,7 +30,7 @@ describe('capabilitiesOf', () => {
       Processing: [],
       Extracted: ['canEditFields', 'canSubmit', 'canCancel'],
       NeedsReview: ['canEditFields', 'canSubmit', 'canCancel'],
-      ExtractionFailed: ['canEnterManually', 'canCancel'],
+      ExtractionFailed: ['canEnterManually', 'canRetryExtraction', 'canCancel'],
       PendingApproval: ['canApprove', 'canReject', 'canCancel'],
       Approved: ['canMarkPaid'],
       Rejected: ['canReopen', 'canCancel'],

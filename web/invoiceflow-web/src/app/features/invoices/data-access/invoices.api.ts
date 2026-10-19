@@ -31,7 +31,7 @@ export type UploadEvent =
   | { readonly type: 'progress'; readonly percent: number }
   | { readonly type: 'done'; readonly invoice: Versioned<InvoiceDetailDto> };
 
-export type InvoiceAction = 'enter-manually' | 'submit' | 'approve' | 'reopen';
+export type InvoiceAction = 'enter-manually' | 'retry-extraction' | 'submit' | 'approve' | 'reopen';
 
 export interface InvoicePage<T> {
   readonly items: readonly T[];
