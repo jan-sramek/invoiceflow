@@ -62,6 +62,11 @@
               <mat-icon>send</mat-icon>{{ 'invoices.actions.submit' | transloco }}
             </button>
           }
+          @if (can.canRetryExtraction) {
+            <button matButton="filled" type="button" [disabled]="store.busy()" (click)="store.retryExtraction()">
+              <mat-icon>refresh</mat-icon>{{ 'invoices.actions.retryExtraction' | transloco }}
+            </button>
+          }
           @if (can.canEnterManually) {
             <button matButton="tonal" type="button" [disabled]="store.busy()" (click)="store.enterManually()">
               <mat-icon>edit_note</mat-icon>{{ 'invoices.actions.enterManually' | transloco }}

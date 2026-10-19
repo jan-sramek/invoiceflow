@@ -15,6 +15,7 @@ using InvoiceFlow.Application.Invoices.ListInvoices;
 using InvoiceFlow.Application.Invoices.MarkPaid;
 using InvoiceFlow.Application.Invoices.Reject;
 using InvoiceFlow.Application.Invoices.Reopen;
+using InvoiceFlow.Application.Invoices.RetryExtraction;
 using InvoiceFlow.Application.Invoices.Submit;
 using InvoiceFlow.Application.Invoices.UpdateFields;
 using InvoiceFlow.Application.Invoices.Upload;
@@ -169,6 +170,25 @@ public sealed class InvoicesController(
         ChangeAsync(
             handler,
             new EnterInvoiceManuallyCommand(new InvoiceId(id), EntityTags.RequiredVersion(ifMatch)),
+            cancellationToken);
+
+    /// <summary>
+    /// Queues the invoice for extraction again after a previous failure.
+    /// </summary>
+    [HttpPost("{id:guid}/retry-extraction")]
+    [Authorize]
+    [ProducesResponseType<InvoiceDetailDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status412PreconditionFailed, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status428PreconditionRequired, "application/problem+json")]
+    public Task<InvoiceDetailDto> RetryExtraction(
+        Guid id,
+        [FromHeader(Name = "If-Match")] string? ifMatch,
+        [FromServices] ICommandHandler<RetryExtractionCommand, InvoiceId> handler,
+        CancellationToken cancellationToken) =>
+        ChangeAsync(
+            handler,
+            new RetryExtractionCommand(new InvoiceId(id), EntityTags.RequiredVersion(ifMatch)),
             cancellationToken);
 
     /// <summary>

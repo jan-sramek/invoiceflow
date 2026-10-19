@@ -4,6 +4,7 @@ import type { DuplicateStatus, InvoiceStatus } from '@shared/api';
 export interface InvoiceCapabilities {
   readonly canEditFields: boolean;
   readonly canEnterManually: boolean;
+  readonly canRetryExtraction: boolean;
   readonly canSubmit: boolean;
   readonly canApprove: boolean;
   readonly canReject: boolean;
@@ -34,6 +35,7 @@ export function capabilitiesOf(status: InvoiceStatus, duplicate: DuplicateStatus
   return {
     canEditFields: EDITABLE.includes(status),
     canEnterManually: status === 'Uploaded' || status === 'ExtractionFailed',
+    canRetryExtraction: status === 'ExtractionFailed',
     // Offered even for a suspected duplicate: the server answers invoice.unresolved_duplicate and the page explains.
     canSubmit: EDITABLE.includes(status),
     canApprove: status === 'PendingApproval',

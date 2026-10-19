@@ -98,6 +98,22 @@ public sealed class InvoiceWriteTests(PostgresFixture database) : InvoiceApiTest
     }
 
     [Fact]
+    [Trait("Requirement", "FR-EXT-06")]
+    public async Task RetryExtraction_MovesFailedInvoiceToProcessing()
+    {
+        var worker = Actor.System("invoiceflow-worker");
+        var invoice = Invoice.Upload(Uploader, Start, InvoiceFlow.Testing.Invoices.TestDocuments.Create(Start));
+        invoice.StartProcessing(worker, Start);
+        invoice.FailExtraction(worker, Start, "extraction.no_text_layer");
+        (InvoiceId id, EntityTagHeaderValue etag) = await SeedAsync(invoice);
+
+        HttpResponseMessage response = await PostAsync(id, "retry-extraction", etag);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await JsonAsync(response)).GetProperty("status").GetString().ShouldBe("Processing");
+    }
+
+    [Fact]
     [Trait("Requirement", "FR-APR-01")]
     public async Task Submit_CompleteInvoice_RecordsSubmitter()
     {
