@@ -1,12 +1,10 @@
-using InvoiceFlow.Domain.Invoices;
-
 namespace InvoiceFlow.Application.Abstractions.Extraction;
 
 /// <summary>
-/// Extracts structured invoice fields from a PDF. Implementations must not throw for unreadable
-/// content; return empty fields so the worker can send the invoice to review.
+/// Extracts structured invoice fields from a PDF. Business failures (no text layer, unreadable PDF)
+/// return <see cref="ExtractionResult.Failed"/>; technical failures (Ollama down) throw so the worker can retry.
 /// </summary>
 public interface IInvoiceExtractor
 {
-    Task<InvoiceFields> ExtractAsync(Stream pdf, CancellationToken cancellationToken);
+    Task<ExtractionResult> ExtractAsync(Stream pdf, CancellationToken cancellationToken);
 }

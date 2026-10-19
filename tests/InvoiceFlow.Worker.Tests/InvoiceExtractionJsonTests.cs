@@ -1,3 +1,4 @@
+using InvoiceFlow.Application.Abstractions.Extraction;
 using InvoiceFlow.Domain.Invoices;
 using InvoiceFlow.Infrastructure.Extraction;
 
@@ -55,10 +56,10 @@ public class InvoiceExtractionJsonTests
     }
 
     [Fact]
-    public async Task StubExtractor_ReturnsEmpty()
+    public async Task StubExtractor_ReturnsSucceededEmpty()
     {
         await using var pdf = new MemoryStream("%PDF"u8.ToArray());
-        InvoiceFields fields = await new StubInvoiceExtractor().ExtractAsync(pdf, TestContext.Current.CancellationToken);
-        fields.ShouldBe(InvoiceFields.Empty);
+        ExtractionResult result = await new StubInvoiceExtractor().ExtractAsync(pdf, TestContext.Current.CancellationToken);
+        result.ShouldBe(new ExtractionResult.Succeeded(InvoiceFields.Empty));
     }
 }
