@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using InvoiceFlow.Domain.Invoices;
 using InvoiceFlow.Domain.Tenants;
@@ -61,6 +62,7 @@ internal sealed partial class InvoiceProcessingConsumer(
         {
             int attempt = ReadAttempt(args);
             byte[] body = args.Body.ToArray();
+            Guid messageId = ResolveMessageId(args, body);
 
             InvoiceUploadedMessage? message;
             try
@@ -70,7 +72,8 @@ internal sealed partial class InvoiceProcessingConsumer(
             catch (JsonException exception)
             {
                 LogInvalidPayload(logger, exception);
-                await PublishDeadLetterAsync(broker, body, args.BasicProperties.Headers, attempt, stoppingToken);
+                await PublishDeadLetterAsync(
+                    broker, body, args.BasicProperties.Headers, attempt, messageId, stoppingToken);
                 await channel.BasicAckAsync(args.DeliveryTag, multiple: false, cancellationToken: CancellationToken.None);
                 return;
             }
@@ -78,7 +81,8 @@ internal sealed partial class InvoiceProcessingConsumer(
             if (message is null || message.TenantId == Guid.Empty || message.InvoiceId == Guid.Empty)
             {
                 LogMissingIds(logger);
-                await PublishDeadLetterAsync(broker, body, args.BasicProperties.Headers, attempt, stoppingToken);
+                await PublishDeadLetterAsync(
+                    broker, body, args.BasicProperties.Headers, attempt, messageId, stoppingToken);
                 await channel.BasicAckAsync(args.DeliveryTag, multiple: false, cancellationToken: CancellationToken.None);
                 return;
             }
@@ -93,7 +97,7 @@ internal sealed partial class InvoiceProcessingConsumer(
                 {
                     InvoiceProcessingService processor =
                         scope.ServiceProvider.GetRequiredService<InvoiceProcessingService>();
-                    await processor.ProcessAsync(invoiceId, stoppingToken);
+                    await processor.ProcessAsync(messageId, invoiceId, stoppingToken);
                 }
 
                 await channel.BasicAckAsync(args.DeliveryTag, multiple: false, cancellationToken: CancellationToken.None);
@@ -105,7 +109,7 @@ internal sealed partial class InvoiceProcessingConsumer(
                 string? retryKey = RetryRouting.NextRetryRoutingKey(attempt);
                 if (retryKey is not null)
                 {
-                    await PublishRetryAsync(broker, body, attempt + 1, retryKey, stoppingToken);
+                    await PublishRetryAsync(broker, body, attempt + 1, retryKey, messageId, stoppingToken);
                     await channel.BasicAckAsync(args.DeliveryTag, multiple: false, cancellationToken: CancellationToken.None);
                     return;
                 }
@@ -118,7 +122,7 @@ internal sealed partial class InvoiceProcessingConsumer(
                         InvoiceProcessingService processor =
                             scope.ServiceProvider.GetRequiredService<InvoiceProcessingService>();
                         await processor.FailAfterRetriesAsync(
-                            invoiceId, "Extraction failed after repeated attempts", CancellationToken.None);
+                            messageId, invoiceId, "Extraction failed after repeated attempts", CancellationToken.None);
                     }
                 }
                 catch (Exception failException)
@@ -126,7 +130,8 @@ internal sealed partial class InvoiceProcessingConsumer(
                     LogFailMarkFailed(logger, failException, invoiceId.Value);
                 }
 
-                await PublishDeadLetterAsync(broker, body, args.BasicProperties.Headers, attempt, CancellationToken.None);
+                await PublishDeadLetterAsync(
+                    broker, body, args.BasicProperties.Headers, attempt, messageId, CancellationToken.None);
                 await channel.BasicAckAsync(args.DeliveryTag, multiple: false, cancellationToken: CancellationToken.None);
             }
         }
@@ -137,6 +142,7 @@ internal sealed partial class InvoiceProcessingConsumer(
         byte[] body,
         int nextAttempt,
         string routingKey,
+        Guid messageId,
         CancellationToken cancellationToken)
     {
         Dictionary<string, object?> headers = new()
@@ -149,7 +155,7 @@ internal sealed partial class InvoiceProcessingConsumer(
             routingKey,
             body,
             headers,
-            messageId: null,
+            messageId: messageId.ToString("D"),
             cancellationToken);
 
         LogRetryScheduled(logger, routingKey, nextAttempt);
@@ -160,6 +166,7 @@ internal sealed partial class InvoiceProcessingConsumer(
         byte[] body,
         IDictionary<string, object?>? existingHeaders,
         int attempt,
+        Guid messageId,
         CancellationToken cancellationToken)
     {
         Dictionary<string, object?> headers = existingHeaders is null
@@ -172,10 +179,24 @@ internal sealed partial class InvoiceProcessingConsumer(
             InvoiceFlowTopology.DeadLetterRoutingKey,
             body,
             headers,
-            messageId: null,
+            messageId: messageId.ToString("D"),
             cancellationToken);
 
         LogDeadLetter(logger, attempt);
+    }
+
+    /// <summary>
+    /// Prefer the outbox id from <c>message_id</c>; otherwise a stable hash of the body for legacy publishes.
+    /// </summary>
+    private static Guid ResolveMessageId(BasicDeliverEventArgs args, byte[] body)
+    {
+        if (!string.IsNullOrWhiteSpace(args.BasicProperties.MessageId)
+            && Guid.TryParse(args.BasicProperties.MessageId, out Guid parsed))
+        {
+            return parsed;
+        }
+
+        return new Guid(SHA256.HashData(body).AsSpan(0, 16));
     }
 
     private static int ReadAttempt(BasicDeliverEventArgs args)

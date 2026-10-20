@@ -307,6 +307,26 @@ namespace InvoiceFlow.Infrastructure.Persistence.Tenant.Migrations
                     b.ToTable("outbox_messages", (string)null);
                 });
 
+            modelBuilder.Entity("InvoiceFlow.Infrastructure.Messaging.ProcessedMessage", b =>
+                {
+                    b.Property<Guid>("MessageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("message_id");
+
+                    b.Property<DateTimeOffset>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.HasKey("MessageId")
+                        .HasName("pk_processed_messages");
+
+                    b.HasIndex("ProcessedAt")
+                        .HasDatabaseName("ix_processed_messages_processed_at");
+
+                    b.ToTable("processed_messages", (string)null);
+                });
+
             modelBuilder.Entity("InvoiceFlow.Infrastructure.Persistence.Idempotency.IdempotencyRecord", b =>
                 {
                     b.Property<string>("Key")

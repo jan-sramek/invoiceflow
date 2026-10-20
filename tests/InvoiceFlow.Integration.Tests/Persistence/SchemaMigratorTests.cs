@@ -110,6 +110,10 @@ public sealed class SchemaMigratorTests(PostgresFixture database) : IAsyncLifeti
                 "outbox_messages INSERT",
                 "outbox_messages SELECT",
                 "outbox_messages UPDATE",
+                "processed_messages DELETE",
+                "processed_messages INSERT",
+                "processed_messages SELECT",
+                "processed_messages UPDATE",
                 "tenant_settings SELECT",
             ],
             ignoreOrder: true);
