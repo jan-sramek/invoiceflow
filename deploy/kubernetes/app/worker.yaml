@@ -17,6 +17,8 @@ spec:
         app.kubernetes.io/name: worker
         app.kubernetes.io/part-of: invoiceflow
     spec:
+      # ≥ worker HostOptions.ShutdownTimeout / Ollama HTTP timeout so SIGTERM can drain in-flight work.
+      terminationGracePeriodSeconds: 180
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
