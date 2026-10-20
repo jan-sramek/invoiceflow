@@ -9,19 +9,27 @@ namespace InvoiceFlow.Worker;
 /// <summary>
 /// Loads an uploaded invoice, extracts fields, and moves it to review or extraction-failed.
 /// Technical failures (storage/HTTP/DB) are rethrown so the consumer can route to TTL retry / DLQ.
+/// Successful or business outcomes record the RabbitMQ message id in <c>processed_messages</c>.
 /// </summary>
 internal sealed partial class InvoiceProcessingService(
     IInvoiceRepository invoices,
     IDocumentStorage storage,
     IInvoiceExtractor extractor,
+    IProcessedMessageStore processedMessages,
     IUnitOfWork unitOfWork,
     TimeProvider time,
     ILogger<InvoiceProcessingService> logger)
 {
     private static readonly Actor WorkerActor = Actor.System("invoiceflow-worker");
 
-    public async Task ProcessAsync(InvoiceId invoiceId, CancellationToken cancellationToken)
+    public async Task ProcessAsync(Guid messageId, InvoiceId invoiceId, CancellationToken cancellationToken)
     {
+        if (await processedMessages.ExistsAsync(messageId, cancellationToken))
+        {
+            LogDuplicateDelivery(logger, messageId, invoiceId.Value);
+            return;
+        }
+
         Invoice? invoice = await invoices.GetAsync(invoiceId, cancellationToken);
         if (invoice is null)
         {
@@ -32,6 +40,9 @@ internal sealed partial class InvoiceProcessingService(
         if (invoice.Status is not (InvoiceStatus.Uploaded or InvoiceStatus.Processing))
         {
             LogAlreadyProcessed(logger, invoiceId.Value, invoice.Status);
+            // Still record the message so redeliveries short-circuit without re-checking status.
+            processedMessages.Add(messageId, time.GetUtcNow());
+            await unitOfWork.CommitAsync(cancellationToken);
             return;
         }
 
@@ -61,14 +72,24 @@ internal sealed partial class InvoiceProcessingService(
                 throw new InvalidOperationException($"Unexpected extraction result {result.GetType().Name}.");
         }
 
+        processedMessages.Add(messageId, time.GetUtcNow());
         await unitOfWork.CommitAsync(cancellationToken);
     }
 
-    public async Task FailAfterRetriesAsync(InvoiceId invoiceId, string reason, CancellationToken cancellationToken)
+    public async Task FailAfterRetriesAsync(
+        Guid messageId, InvoiceId invoiceId, string reason, CancellationToken cancellationToken)
     {
+        if (await processedMessages.ExistsAsync(messageId, cancellationToken))
+        {
+            LogDuplicateDelivery(logger, messageId, invoiceId.Value);
+            return;
+        }
+
         Invoice? invoice = await invoices.GetAsync(invoiceId, cancellationToken);
         if (invoice is null)
         {
+            processedMessages.Add(messageId, time.GetUtcNow());
+            await unitOfWork.CommitAsync(cancellationToken);
             return;
         }
 
@@ -80,8 +101,10 @@ internal sealed partial class InvoiceProcessingService(
         if (invoice.Status is InvoiceStatus.Processing)
         {
             FailProcessing(invoice, reason);
-            await unitOfWork.CommitAsync(cancellationToken);
         }
+
+        processedMessages.Add(messageId, time.GetUtcNow());
+        await unitOfWork.CommitAsync(cancellationToken);
     }
 
     private void FailProcessing(Invoice invoice, string reason)
@@ -97,4 +120,7 @@ internal sealed partial class InvoiceProcessingService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Invoice {InvoiceId} already in status {Status}; skipping")]
     private static partial void LogAlreadyProcessed(ILogger logger, Guid invoiceId, InvoiceStatus status);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Skipping duplicate delivery of message {MessageId} for invoice {InvoiceId}")]
+    private static partial void LogDuplicateDelivery(ILogger logger, Guid messageId, Guid invoiceId);
 }

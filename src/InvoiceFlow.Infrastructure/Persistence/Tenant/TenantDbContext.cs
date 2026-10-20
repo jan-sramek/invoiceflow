@@ -26,6 +26,8 @@ internal sealed class TenantDbContext(DbContextOptions<TenantDbContext> options,
 
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
+    public DbSet<ProcessedMessage> ProcessedMessages => Set<ProcessedMessage>();
+
     /// <summary>
     /// Without a connection string, <see cref="Tenancy.TenantConnectionInterceptor"/> routes the connection.
     /// </summary>
@@ -80,6 +82,13 @@ internal sealed class TenantDbContext(DbContextOptions<TenantDbContext> options,
             outbox.HasIndex(m => m.CreatedAt)
                 .HasFilter("published_at IS NULL")
                 .HasDatabaseName("ix_outbox_messages_unpublished");
+        });
+
+        modelBuilder.Entity<ProcessedMessage>(processed =>
+        {
+            processed.ToTable("processed_messages");
+            processed.HasKey(m => m.MessageId);
+            processed.HasIndex(m => m.ProcessedAt);
         });
 
         // Second line of defence: the database already belongs to one tenant.

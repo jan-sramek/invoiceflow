@@ -14,6 +14,7 @@ public class InvoiceProcessingServiceTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 19, 12, 0, 0, TimeSpan.Zero);
     private static readonly Actor Clerk = Actor.User("clerk-1", "Clara Clerk");
+    private static readonly Guid MessageId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     [Fact]
     public async Task ProcessAsync_StubExtractor_MovesInvoiceToNeedsReview()
@@ -33,18 +34,21 @@ public class InvoiceProcessingServiceTests
 
         var repository = new FakeInvoiceRepository(invoice);
         var unitOfWork = new FakeUnitOfWork();
+        var processed = new FakeProcessedMessageStore();
         var service = new InvoiceProcessingService(
             repository,
             storage,
             new StubInvoiceExtractor(),
+            processed,
             unitOfWork,
             TimeProvider.System,
             NullLogger<InvoiceProcessingService>.Instance);
 
-        await service.ProcessAsync(invoice.Id, TestContext.Current.CancellationToken);
+        await service.ProcessAsync(MessageId, invoice.Id, TestContext.Current.CancellationToken);
 
         invoice.Status.ShouldBe(InvoiceStatus.NeedsReview);
         unitOfWork.Committed.ShouldBeTrue();
+        processed.Added.ShouldContain(MessageId);
     }
 
     [Fact]
@@ -63,17 +67,20 @@ public class InvoiceProcessingServiceTests
                 document.StorageKey, content, InvoiceDocument.PdfContentType, pdf.Length, TestContext.Current.CancellationToken);
         }
 
+        var processed = new FakeProcessedMessageStore();
         var service = new InvoiceProcessingService(
             new FakeInvoiceRepository(invoice),
             storage,
             new FixedExtractor(new ExtractionResult.Failed(ApplicationErrors.Extraction.NoTextLayer)),
+            processed,
             new FakeUnitOfWork(),
             TimeProvider.System,
             NullLogger<InvoiceProcessingService>.Instance);
 
-        await service.ProcessAsync(invoice.Id, TestContext.Current.CancellationToken);
+        await service.ProcessAsync(MessageId, invoice.Id, TestContext.Current.CancellationToken);
 
         invoice.Status.ShouldBe(InvoiceStatus.ExtractionFailed);
+        processed.Added.ShouldContain(MessageId);
     }
 
     [Fact]
@@ -85,26 +92,70 @@ public class InvoiceProcessingServiceTests
         var document = InvoiceDocument.Create(documentId, "missing-key", "invoice.pdf", pdf.Length, sha256);
         var invoice = Invoice.Upload(Clerk, Now, document);
         var unitOfWork = new FakeUnitOfWork();
+        var processed = new FakeProcessedMessageStore();
 
         var service = new InvoiceProcessingService(
             new FakeInvoiceRepository(invoice),
             new InMemoryDocumentStorage(),
             new StubInvoiceExtractor(),
+            processed,
             unitOfWork,
             TimeProvider.System,
             NullLogger<InvoiceProcessingService>.Instance);
 
         await Should.ThrowAsync<Exception>(() =>
-            service.ProcessAsync(invoice.Id, TestContext.Current.CancellationToken));
+            service.ProcessAsync(MessageId, invoice.Id, TestContext.Current.CancellationToken));
 
         invoice.Status.ShouldNotBe(InvoiceStatus.ExtractionFailed);
         unitOfWork.Committed.ShouldBeFalse();
+        processed.Added.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ProcessAsync_DuplicateMessage_SkipsWithoutReextracting()
+    {
+        var documentId = Guid.CreateVersion7(Now);
+        byte[] pdf = "%PDF-1.4 stub"u8.ToArray();
+        string sha256 = Convert.ToHexString(SHA256.HashData(pdf)).ToLowerInvariant();
+        var document = InvoiceDocument.Create(documentId, "tenant/doc", "invoice.pdf", pdf.Length, sha256);
+        var invoice = Invoice.Upload(Clerk, Now, document);
+        invoice.StartProcessing(Actor.System("worker"), Now);
+        invoice.RequireReview(Actor.System("worker"), Now);
+
+        var extractor = new CountingExtractor();
+        var processed = new FakeProcessedMessageStore();
+        processed.Add(MessageId, Now);
+
+        var service = new InvoiceProcessingService(
+            new FakeInvoiceRepository(invoice),
+            new InMemoryDocumentStorage(),
+            extractor,
+            processed,
+            new FakeUnitOfWork(),
+            TimeProvider.System,
+            NullLogger<InvoiceProcessingService>.Instance);
+
+        await service.ProcessAsync(MessageId, invoice.Id, TestContext.Current.CancellationToken);
+
+        extractor.Calls.ShouldBe(0);
+        invoice.Status.ShouldBe(InvoiceStatus.NeedsReview);
     }
 
     private sealed class FixedExtractor(ExtractionResult result) : IInvoiceExtractor
     {
         public Task<ExtractionResult> ExtractAsync(Stream pdf, CancellationToken cancellationToken) =>
             Task.FromResult(result);
+    }
+
+    private sealed class CountingExtractor : IInvoiceExtractor
+    {
+        public int Calls { get; private set; }
+
+        public Task<ExtractionResult> ExtractAsync(Stream pdf, CancellationToken cancellationToken)
+        {
+            Calls++;
+            return Task.FromResult<ExtractionResult>(new ExtractionResult.Succeeded(InvoiceFields.Empty));
+        }
     }
 
     private sealed class FakeInvoiceRepository(Invoice invoice) : IInvoiceRepository
@@ -119,6 +170,18 @@ public class InvoiceProcessingServiceTests
             Task.FromResult<InvoiceId?>(null);
 
         public void Add(Invoice newInvoice) => throw new NotSupportedException();
+    }
+
+    private sealed class FakeProcessedMessageStore : IProcessedMessageStore
+    {
+        private readonly HashSet<Guid> _ids = [];
+
+        public IReadOnlyCollection<Guid> Added => _ids;
+
+        public Task<bool> ExistsAsync(Guid messageId, CancellationToken cancellationToken) =>
+            Task.FromResult(_ids.Contains(messageId));
+
+        public void Add(Guid messageId, DateTimeOffset processedAt) => _ids.Add(messageId);
     }
 
     private sealed class FakeUnitOfWork : IUnitOfWork

@@ -42,6 +42,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IInvoiceRepository, InvoiceRepository>();
         services.AddScoped<IInvoiceReadService, InvoiceReadService>();
         services.AddScoped<IIdempotencyStore, IdempotencyStore>();
+        services.AddScoped<IProcessedMessageStore, ProcessedMessageStore>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddDocumentStorage(configuration);
         services.AddMessaging(configuration);
