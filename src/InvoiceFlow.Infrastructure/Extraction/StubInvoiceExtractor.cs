@@ -1,16 +1,15 @@
 using InvoiceFlow.Application.Abstractions.Extraction;
-using InvoiceFlow.Domain.Invoices;
+using Microsoft.Extensions.Options;
 
 namespace InvoiceFlow.Infrastructure.Extraction;
 
 /// <summary>
-/// Returns empty fields so the worker sends the invoice to review. Used when Ollama is not configured.
+/// Always succeeds with empty fields. Convenience for unit tests that do not need options.
 /// </summary>
 internal sealed class StubInvoiceExtractor : IInvoiceExtractor
 {
-    public Task<ExtractionResult> ExtractAsync(Stream pdf, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(pdf);
-        return Task.FromResult<ExtractionResult>(new ExtractionResult.Succeeded(InvoiceFields.Empty));
-    }
+    private readonly FakeInvoiceExtractor _inner = new(Options.Create(new FakeExtractorOptions()));
+
+    public Task<ExtractionResult> ExtractAsync(Stream pdf, CancellationToken cancellationToken) =>
+        _inner.ExtractAsync(pdf, cancellationToken);
 }

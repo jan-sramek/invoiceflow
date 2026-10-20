@@ -108,3 +108,4 @@ Stored on the invoice when automatic extraction fails (not returned as HTTP Prob
 | <a id="extraction.too_many_pages"></a>`extraction.too_many_pages` | — | The PDF has more pages than the configured limit. | | Upload a shorter document or enter fields manually. |
 | <a id="extraction.pdf_unreadable"></a>`extraction.pdf_unreadable` | — | The PDF is encrypted or could not be parsed. | | Re-export the PDF or enter fields manually. |
 | <a id="extraction.invalid_model_output"></a>`extraction.invalid_model_output` | — | The model did not return usable field JSON. | | Retry extraction later or enter fields manually. |
+| <a id="extraction.fake_failed"></a>`extraction.fake_failed` | — | The configurable fake extractor simulated a business failure (local/tests only). | | Retry extraction or enter fields manually. |
