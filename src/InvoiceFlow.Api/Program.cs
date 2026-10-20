@@ -21,6 +21,11 @@ builder.Services.Configure<FormOptions>(options =>
 builder.AddServiceDefaults();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+if (!string.IsNullOrWhiteSpace(builder.Configuration["RabbitMq:Host"]))
+{
+    builder.Services.AddOutboxPublisher();
+}
+
 builder.Services.AddHealthChecks().AddCatalogCheck(HealthEndpoints.ReadyTag);
 
 builder.Services.AddErrorContract();

@@ -105,13 +105,23 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IDocumentStorage, S3DocumentStorage>();
     }
 
+    /// <summary>
+    /// Hosts the outbox drain loop. Call from the API only when RabbitMQ is configured.
+    /// </summary>
+    public static IServiceCollection AddOutboxPublisher(this IServiceCollection services)
+    {
+        services.AddHostedService<OutboxPublisher>();
+        return services;
+    }
+
     private static void AddMessaging(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddScoped<IInvoiceEventPublisher, OutboxInvoiceEventPublisher>();
+
         IConfigurationSection section = configuration.GetSection(RabbitMqOptions.SectionName);
         if (!section.Exists() || string.IsNullOrWhiteSpace(section["Host"]))
         {
             services.AddOptions<RabbitMqOptions>().Bind(section);
-            services.AddSingleton<IInvoiceEventPublisher, NoOpInvoiceEventPublisher>();
             return;
         }
 
@@ -119,7 +129,7 @@ public static class InfrastructureServiceCollectionExtensions
             .Bind(section)
             .ValidateDataAnnotations()
             .ValidateOnStart();
-        services.AddSingleton<IInvoiceEventPublisher, RabbitMqInvoiceEventPublisher>();
+        services.AddSingleton<RabbitMqBroker>();
     }
 
     private static void AddExtraction(this IServiceCollection services, IConfiguration configuration)

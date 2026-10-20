@@ -3,7 +3,11 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using InvoiceFlow.Domain.Invoices;
+using InvoiceFlow.Infrastructure.Messaging;
+using InvoiceFlow.Infrastructure.Persistence.Tenant;
 using InvoiceFlow.Integration.Tests.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace InvoiceFlow.Integration.Tests.Api;
 
@@ -23,6 +27,23 @@ public sealed class InvoiceUploadTests(PostgresFixture database) : InvoiceApiTes
         body.GetProperty("status").GetString().ShouldBe("Uploaded");
         body.GetProperty("document").GetProperty("originalFileName").GetString().ShouldBe("acme.pdf");
         body.GetProperty("duplicate").ValueKind.ShouldBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    [Trait("Requirement", "NFR-INT-01")]
+    public async Task Upload_InsertsUnpublishedOutboxRow()
+    {
+        HttpResponseMessage response = await UploadAsync(PdfBytes, "outbox.pdf", "outbox-1");
+        Guid invoiceId = (await JsonAsync(response)).GetProperty("id").GetGuid();
+
+        await using AsyncServiceScope scope = Database.OpenScope(Tenant.Id);
+        OutboxMessage outbox = await scope.ServiceProvider.GetRequiredService<TenantDbContext>().OutboxMessages
+            .SingleAsync(CancellationToken);
+
+        outbox.Type.ShouldBe(OutboxMessage.InvoiceUploadedType);
+        outbox.PublishedAt.ShouldBeNull();
+        outbox.Payload.ShouldContain(invoiceId.ToString("D"));
+        outbox.Payload.ShouldContain(Tenant.Id.Value.ToString("D"));
     }
 
     [Fact]

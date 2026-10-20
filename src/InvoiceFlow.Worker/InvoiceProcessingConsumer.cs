@@ -11,9 +11,11 @@ namespace InvoiceFlow.Worker;
 
 /// <summary>
 /// Consumes <c>invoice.uploaded</c> messages and runs <see cref="InvoiceProcessingService"/>.
+/// Technical failures publish to TTL retry queues (or DLQ when exhausted); business outcomes ack.
 /// </summary>
 internal sealed partial class InvoiceProcessingConsumer(
     IServiceScopeFactory scopeFactory,
+    IServiceProvider services,
     IOptions<RabbitMqOptions> options,
     ILogger<InvoiceProcessingConsumer> logger) : BackgroundService
 {
@@ -22,7 +24,8 @@ internal sealed partial class InvoiceProcessingConsumer(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         RabbitMqOptions settings = options.Value;
-        if (string.IsNullOrWhiteSpace(settings.Host))
+        RabbitMqBroker? broker = services.GetService<RabbitMqBroker>();
+        if (string.IsNullOrWhiteSpace(settings.Host) || broker is null)
         {
             LogIdle(logger);
             await Task.Delay(Timeout.Infinite, stoppingToken);
@@ -56,14 +59,18 @@ internal sealed partial class InvoiceProcessingConsumer(
 
         async Task OnReceivedAsync(object sender, BasicDeliverEventArgs args)
         {
+            int attempt = ReadAttempt(args);
+            byte[] body = args.Body.ToArray();
+
             InvoiceUploadedMessage? message;
             try
             {
-                message = JsonSerializer.Deserialize<InvoiceUploadedMessage>(args.Body.Span, JsonOptions);
+                message = JsonSerializer.Deserialize<InvoiceUploadedMessage>(body, JsonOptions);
             }
             catch (JsonException exception)
             {
                 LogInvalidPayload(logger, exception);
+                await PublishDeadLetterAsync(broker, body, args.BasicProperties.Headers, attempt, stoppingToken);
                 await channel.BasicAckAsync(args.DeliveryTag, multiple: false, cancellationToken: CancellationToken.None);
                 return;
             }
@@ -71,11 +78,11 @@ internal sealed partial class InvoiceProcessingConsumer(
             if (message is null || message.TenantId == Guid.Empty || message.InvoiceId == Guid.Empty)
             {
                 LogMissingIds(logger);
+                await PublishDeadLetterAsync(broker, body, args.BasicProperties.Headers, attempt, stoppingToken);
                 await channel.BasicAckAsync(args.DeliveryTag, multiple: false, cancellationToken: CancellationToken.None);
                 return;
             }
 
-            int attempt = DeliveryAttempt(args);
             var tenantId = new TenantId(message.TenantId);
             var invoiceId = new InvoiceId(message.InvoiceId);
 
@@ -86,17 +93,7 @@ internal sealed partial class InvoiceProcessingConsumer(
                 {
                     InvoiceProcessingService processor =
                         scope.ServiceProvider.GetRequiredService<InvoiceProcessingService>();
-
-                    if (attempt >= settings.MaxDeliveryAttempts)
-                    {
-                        LogGivingUp(logger, invoiceId.Value, attempt);
-                        await processor.FailAfterRetriesAsync(
-                            invoiceId, "Extraction failed after repeated attempts", stoppingToken);
-                    }
-                    else
-                    {
-                        await processor.ProcessAsync(invoiceId, stoppingToken);
-                    }
+                    await processor.ProcessAsync(invoiceId, stoppingToken);
                 }
 
                 await channel.BasicAckAsync(args.DeliveryTag, multiple: false, cancellationToken: CancellationToken.None);
@@ -105,49 +102,100 @@ internal sealed partial class InvoiceProcessingConsumer(
             {
                 LogProcessingFailed(logger, exception, invoiceId.Value, attempt);
 
-                bool requeue = attempt < settings.MaxDeliveryAttempts;
-                await channel.BasicNackAsync(
-                    args.DeliveryTag, multiple: false, requeue: requeue, cancellationToken: CancellationToken.None);
-
-                if (!requeue)
+                string? retryKey = RetryRouting.NextRetryRoutingKey(attempt);
+                if (retryKey is not null)
                 {
-                    try
+                    await PublishRetryAsync(broker, body, attempt + 1, retryKey, stoppingToken);
+                    await channel.BasicAckAsync(args.DeliveryTag, multiple: false, cancellationToken: CancellationToken.None);
+                    return;
+                }
+
+                try
+                {
+                    using (MessageTenantContext.Use(tenantId))
+                    await using (AsyncServiceScope scope = scopeFactory.CreateAsyncScope())
                     {
-                        using (MessageTenantContext.Use(tenantId))
-                        await using (AsyncServiceScope scope = scopeFactory.CreateAsyncScope())
-                        {
-                            InvoiceProcessingService processor =
-                                scope.ServiceProvider.GetRequiredService<InvoiceProcessingService>();
-                            await processor.FailAfterRetriesAsync(
-                                invoiceId, "Extraction failed after repeated attempts", CancellationToken.None);
-                        }
-                    }
-                    catch (Exception failException)
-                    {
-                        LogFailMarkFailed(logger, failException, invoiceId.Value);
+                        InvoiceProcessingService processor =
+                            scope.ServiceProvider.GetRequiredService<InvoiceProcessingService>();
+                        await processor.FailAfterRetriesAsync(
+                            invoiceId, "Extraction failed after repeated attempts", CancellationToken.None);
                     }
                 }
+                catch (Exception failException)
+                {
+                    LogFailMarkFailed(logger, failException, invoiceId.Value);
+                }
+
+                await PublishDeadLetterAsync(broker, body, args.BasicProperties.Headers, attempt, CancellationToken.None);
+                await channel.BasicAckAsync(args.DeliveryTag, multiple: false, cancellationToken: CancellationToken.None);
             }
         }
     }
 
-    private static int DeliveryAttempt(BasicDeliverEventArgs args)
+    private async Task PublishRetryAsync(
+        RabbitMqBroker broker,
+        byte[] body,
+        int nextAttempt,
+        string routingKey,
+        CancellationToken cancellationToken)
+    {
+        Dictionary<string, object?> headers = new()
+        {
+            [InvoiceFlowTopology.AttemptHeader] = nextAttempt,
+        };
+
+        await broker.PublishAsync(
+            InvoiceFlowTopology.RetryExchange,
+            routingKey,
+            body,
+            headers,
+            messageId: null,
+            cancellationToken);
+
+        LogRetryScheduled(logger, routingKey, nextAttempt);
+    }
+
+    private async Task PublishDeadLetterAsync(
+        RabbitMqBroker broker,
+        byte[] body,
+        IDictionary<string, object?>? existingHeaders,
+        int attempt,
+        CancellationToken cancellationToken)
+    {
+        Dictionary<string, object?> headers = existingHeaders is null
+            ? new Dictionary<string, object?>()
+            : new Dictionary<string, object?>(existingHeaders);
+        headers[InvoiceFlowTopology.AttemptHeader] = attempt;
+
+        await broker.PublishAsync(
+            InvoiceFlowTopology.DlxExchange,
+            InvoiceFlowTopology.DeadLetterRoutingKey,
+            body,
+            headers,
+            messageId: null,
+            cancellationToken);
+
+        LogDeadLetter(logger, attempt);
+    }
+
+    private static int ReadAttempt(BasicDeliverEventArgs args)
     {
         if (args.BasicProperties.Headers is { } headers
-            && headers.TryGetValue("x-delivery-count", out object? raw))
+            && headers.TryGetValue(InvoiceFlowTopology.AttemptHeader, out object? raw))
         {
             return raw switch
             {
-                byte b => b + 1,
-                sbyte sb => sb + 1,
-                int i => i + 1,
-                long l => (int)l + 1,
-                byte[] bytes when bytes.Length > 0 => bytes[0] + 1,
-                _ => args.Redelivered ? 2 : 1,
+                byte b => b,
+                sbyte sb => sb,
+                short s => s,
+                int i => i,
+                long l => (int)l,
+                byte[] bytes when bytes.Length > 0 => bytes[0],
+                _ => 0,
             };
         }
 
-        return args.Redelivered ? 2 : 1;
+        return 0;
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "RabbitMq:Host is not configured; invoice processing consumer is idle")]
@@ -156,18 +204,21 @@ internal sealed partial class InvoiceProcessingConsumer(
     [LoggerMessage(Level = LogLevel.Information, Message = "Consuming queue {Queue}")]
     private static partial void LogConsuming(ILogger logger, string queue);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Invalid invoice.uploaded payload; acknowledging to drop poison message")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Invalid invoice.uploaded payload; routing to DLQ")]
     private static partial void LogInvalidPayload(ILogger logger, Exception exception);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "invoice.uploaded payload missing ids; acknowledging to drop poison message")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "invoice.uploaded payload missing ids; routing to DLQ")]
     private static partial void LogMissingIds(ILogger logger);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Giving up on invoice {InvoiceId} after {Attempt} attempts")]
-    private static partial void LogGivingUp(ILogger logger, Guid invoiceId, int attempt);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed processing invoice {InvoiceId} (attempt {Attempt})")]
     private static partial void LogProcessingFailed(ILogger logger, Exception exception, Guid invoiceId, int attempt);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Could not mark invoice {InvoiceId} as extraction failed")]
     private static partial void LogFailMarkFailed(ILogger logger, Exception exception, Guid invoiceId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Scheduled retry via {RoutingKey} (next attempt {Attempt})")]
+    private static partial void LogRetryScheduled(ILogger logger, string routingKey, int attempt);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Published message to DLQ after attempt {Attempt}")]
+    private static partial void LogDeadLetter(ILogger logger, int attempt);
 }

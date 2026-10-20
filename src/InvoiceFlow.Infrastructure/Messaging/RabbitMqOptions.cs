@@ -22,7 +22,8 @@ public sealed class RabbitMqOptions
     public string Password { get; set; } = "";
 
     /// <summary>
-    /// After this many delivery attempts the worker acks the message and fails extraction.
+    /// Unused by the DLX retry path (attempt count follows the three TTL retry tiers).
+    /// Kept so existing cluster config keys remain valid.
     /// </summary>
     [Range(1, 20)]
     public int MaxDeliveryAttempts { get; set; } = 5;
