@@ -95,6 +95,7 @@ A status of *field* means the code appears only inside `errors`.
 | <a id="concurrency.if_match_required"></a>`concurrency.if_match_required` | 428 | A write came without the `ETag` of the version it changes. | | Send the `ETag` from the last read as `If-Match`. |
 | <a id="concurrency.stale_version"></a>`concurrency.stale_version` | 412 | Someone changed the resource after you read it. | | Reload, reapply your change and retry. |
 | <a id="tenant.unavailable"></a>`tenant.unavailable` | 503 | Your organisation's data store is not reachable. | | Retry after `Retry-After` seconds. |
+| <a id="tenant.maintenance"></a>`tenant.maintenance` | 503 | Your organisation's data store is under maintenance (schema behind or last migration failed). | | Wait for migration to finish, then retry after `Retry-After` seconds. |
 | <a id="storage.unavailable"></a>`storage.unavailable` | 503 | Document storage is not reachable. | | Retry after `Retry-After` seconds. |
 | <a id="server.unexpected"></a>`server.unexpected` | 500 | An unexpected error occurred. | | Report it with the `traceId`. |
 

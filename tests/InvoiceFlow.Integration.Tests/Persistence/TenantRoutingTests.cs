@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using InvoiceFlow.Application.Abstractions.Persistence;
 using InvoiceFlow.Application.Errors;
 using InvoiceFlow.Domain.Common;
@@ -67,15 +68,52 @@ public sealed class TenantRoutingTests(PostgresFixture database)
     }
 
     [Fact]
-    public async Task Open_ServerUnreachable_IsUnavailable()
+    public async Task Open_ServerUnreachable_IsUnavailableWithinConnectTimeout()
     {
         TestTenant tenant = await database.CreateTenantAsync();
         await ChangeDatabaseAsync(tenant.Id, d => d.SetProperty(x => x.Port, 1));
 
+        var elapsed = Stopwatch.StartNew();
         TenantUnavailableException exception =
             await Should.ThrowAsync<TenantUnavailableException>(() => GetInvoiceAsync(tenant.Id));
+        elapsed.Stop();
 
         exception.InnerException.ShouldBeAssignableTo<NpgsqlException>();
+        // Default Tenancy:ConnectTimeoutSeconds is 2; leave a little room for host overhead (NFR-REL-06).
+        elapsed.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(3));
+    }
+
+    [Fact]
+    public async Task Open_UnreachableTenant_DoesNotAffectOtherTenant()
+    {
+        TestTenant healthy = await database.CreateTenantAsync();
+        TestTenant broken = await database.CreateTenantAsync();
+        await ChangeDatabaseAsync(broken.Id, d => d.SetProperty(x => x.Port, 1));
+
+        await Should.ThrowAsync<TenantUnavailableException>(() => GetInvoiceAsync(broken.Id));
+        await AddInvoiceAsync(healthy.Id);
+        (await CountInvoicesAsync(healthy.Database)).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Open_LastMigrationError_IsMaintenance()
+    {
+        TestTenant tenant = await database.CreateTenantAsync();
+        await ChangeDatabaseAsync(tenant.Id, d => d.SetProperty(x => x.LastMigrationError, "boom"));
+
+        TenantMaintenanceException exception =
+            await Should.ThrowAsync<TenantMaintenanceException>(() => GetInvoiceAsync(tenant.Id));
+
+        exception.Code.ShouldBe(ApplicationErrors.Tenant.Maintenance);
+    }
+
+    [Fact]
+    public async Task Open_SchemaBehind_IsMaintenance()
+    {
+        TestTenant tenant = await database.CreateTenantAsync();
+        await ChangeDatabaseAsync(tenant.Id, d => d.SetProperty(x => x.SchemaVersion, "0_ancient"));
+
+        await Should.ThrowAsync<TenantMaintenanceException>(() => GetInvoiceAsync(tenant.Id));
     }
 
     [Fact]

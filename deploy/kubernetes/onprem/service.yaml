@@ -1,0 +1,31 @@
+# On-prem PostgreSQL runs on the Colima/Docker host. A Service without a selector plus a
+# manually managed EndpointSlice gives pods a normal DNS name with TLS to the host.
+apiVersion: v1
+kind: Service
+metadata:
+  name: onprem-postgres
+  namespace: invoiceflow
+spec:
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5433
+      protocol: TCP
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: onprem-postgres-host
+  namespace: invoiceflow
+  labels:
+    kubernetes.io/service-name: onprem-postgres
+    endpointslice.kubernetes.io/managed-by: invoiceflow
+addressType: IPv4
+ports:
+  - name: postgres
+    port: 5433
+    protocol: TCP
+endpoints:
+  # Colima maps this address to the macOS host's loopback interface (override if needed)
+  - addresses:
+      - 192.168.5.2

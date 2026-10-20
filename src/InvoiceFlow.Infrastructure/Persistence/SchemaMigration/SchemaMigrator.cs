@@ -66,7 +66,9 @@ internal sealed partial class SchemaMigrator(
         TenantCredentials credentials = await TenantCredentials.ReadAsync(
             options.Value.CredentialsPath, database.CredentialsKey, cancellationToken);
 
-        NpgsqlConnectionStringBuilder connectionString = credentials.ConnectTo(database);
+        NpgsqlConnectionStringBuilder connectionString = credentials.ConnectTo(
+            database,
+            options.Value.RootCertificatePath);
         connectionString.Pooling = false;
 
         DbContextOptionsBuilder<TenantDbContext> contextOptions =

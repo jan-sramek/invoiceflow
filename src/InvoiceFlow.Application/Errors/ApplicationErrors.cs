@@ -51,6 +51,9 @@ public static class ApplicationErrors
     {
         [Description("Tenant unavailable")]
         public const string Unavailable = "tenant.unavailable";
+
+        [Description("Tenant under maintenance")]
+        public const string Maintenance = "tenant.maintenance";
     }
 
     public static class Storage

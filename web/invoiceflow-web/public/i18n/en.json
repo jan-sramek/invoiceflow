@@ -121,7 +121,8 @@
       "stale_version": "Someone changed this invoice after you opened it. Reload and try again."
     },
     "tenant": {
-      "unavailable": "Your organisation's data is temporarily unavailable. Try again shortly."
+      "unavailable": "Your organisation's data is temporarily unavailable. Try again shortly.",
+      "maintenance": "Your organisation's data store is under maintenance. Try again shortly."
     },
     "storage": {
       "unavailable": "Document storage is temporarily unavailable. Try again shortly."

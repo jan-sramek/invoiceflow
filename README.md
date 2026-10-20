@@ -25,6 +25,16 @@ Stage 1 UI lives in [`web/invoiceflow-web`](web/invoiceflow-web).
 - `make stack-up` includes RabbitMQ. With `DocumentExtraction:ServiceUrl` (Ollama on the host, model `qwen3:0.6b` in the cluster) the worker uses **PdfPig** to read the PDF text layer, then asks Ollama for fields. PDFs without a text layer fail with `extraction.no_text_layer` (scanned/OCR is Stage 9). Without that URL the worker uses a **configurable fake extractor** (`FakeExtractor:Delay`, `FailureRate`, `FailureMode` Technical|Business) so local Windows, tests, and retry drills stay deterministic.
 - Ops: [`docs/runbooks/find-failed-invoice.md`](docs/runbooks/find-failed-invoice.md) (trace a failed invoice) and [`docs/runbooks/stage5-failure-experiments.md`](docs/runbooks/stage5-failure-experiments.md) (loss/duplication drills).
 
+## On-premises tenant database (Stage 6)
+
+Simulates a client-site PostgreSQL outside k3d (macOS + Colima, same host-gateway pattern as Ollama). Windows `onprem-up` is out of scope.
+
+1. `make onprem-up` — TLS-only Postgres on the Docker host (`127.0.0.1:5433`), CA/certs under `deploy/onprem/certs/` (gitignored).
+2. `make onprem-spike` — selector-less Service + EndpointSlice (`onprem-postgres.invoiceflow` → Colima `192.168.5.2:5433`) and a Job that `psql`s with `sslmode=verify-full`. Pass = cluster DNS + TLS works; wrong CA/host must fail.
+3. `make provision-tenant` — registers the Acme On-Prem demo tenant (`slug=onprem`), writes credentials into the tenant Secrets, migrates the on-prem DB, restarts API/worker so the CA ConfigMap is mounted.
+
+Unavailable on-prem DBs fail within ~2s as `tenant.unavailable` (503) with a per-tenant circuit breaker; schema behind / migration error returns `tenant.maintenance`. Catalog readiness stays independent. Isolation drills: [`docs/runbooks/stage6-onprem-isolation.md`](docs/runbooks/stage6-onprem-isolation.md).
+
 ## End-to-end tests
 
 Playwright smoke tests live in [`tests/e2e`](tests/e2e). On macOS against k3d: `make e2e-install`, then `make e2e-smoke` (sign in as Clara Clerk when prompted). On Windows against local `ng serve`, see [`tests/e2e/README.md`](tests/e2e/README.md).

@@ -37,13 +37,35 @@ internal sealed record TenantCredentials(string Username, string Password)
         }
     }
 
-    public NpgsqlConnectionStringBuilder ConnectTo(TenantDatabase database) => new NpgsqlConnectionStringBuilder
+    public NpgsqlConnectionStringBuilder ConnectTo(
+        TenantDatabase database,
+        string? rootCertificatePath = null,
+        int connectTimeoutSeconds = 15) =>
+        ApplyTls(
+            new NpgsqlConnectionStringBuilder
+            {
+                Host = database.Host,
+                Port = database.Port,
+                Database = database.DatabaseName,
+                Username = Username,
+                Password = Password,
+                SslMode = database.SslMode,
+                Timeout = connectTimeoutSeconds,
+            }.WithoutGssEncryption(),
+            database.SslMode,
+            rootCertificatePath);
+
+    private static NpgsqlConnectionStringBuilder ApplyTls(
+        NpgsqlConnectionStringBuilder builder,
+        SslMode sslMode,
+        string? rootCertificatePath)
     {
-        Host = database.Host,
-        Port = database.Port,
-        Database = database.DatabaseName,
-        Username = Username,
-        Password = Password,
-        SslMode = database.SslMode,
-    }.WithoutGssEncryption();
+        if (rootCertificatePath is { Length: > 0 }
+            && sslMode is SslMode.VerifyCA or SslMode.VerifyFull)
+        {
+            builder.RootCertificate = rootCertificatePath;
+        }
+
+        return builder;
+    }
 }

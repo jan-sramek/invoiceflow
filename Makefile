@@ -39,6 +39,7 @@ endif
 .PHONY: help up down doctor cluster-up cluster-down cluster-status ollama-up ollama-down ollama-check \
 	observability-up observability-down grafana-password dashboard-url telemetry-check dashboard-up dashboard-down \
 	postgres-up postgres-down postgres-password db-forward psql \
+	onprem-up onprem-down onprem-spike provision-tenant \
 	seaweedfs-up seaweedfs-down s3-credentials s3-forward s3-check images web-image \
 	app-up app-down app-check rabbitmq-up rabbitmq-down rabbitmq-password rabbitmq-ui \
 	keycloak-image keycloak-up keycloak-down keycloak-password keycloak-admin trust-local-ca \
@@ -101,6 +102,21 @@ ollama-down: ## Stop Ollama
 
 ollama-check: doctor ## Call Ollama on the host from a pod in the cluster
 	@./scripts/ollama-check.sh
+
+onprem-up: ## Start TLS PostgreSQL on the Docker host (port 5433), simulating a client site
+	@./scripts/onprem-up.sh
+
+onprem-down: ## Stop the simulated on-premises PostgreSQL
+	@./scripts/onprem-down.sh
+
+onprem-spike: doctor ## Reach host Postgres with TLS verify-full from a cluster pod
+	@./scripts/onprem-spike.sh
+
+provision-tenant: doctor images ## Provision or refresh the OnPremises demo tenant (requires onprem-up + spike)
+	@./scripts/provision-tenant.sh
+	@$(KUBECTL) rollout restart deployment/api deployment/worker --namespace $(APP_NS)
+	@./scripts/run-migrator.sh $(IMAGE_TAG)
+	@echo "On-prem demo tenant ready (slug=onprem). Point Tenancy__DevelopmentTenantId at ONPREM_TENANT_ID to exercise it."
 
 observability-up: doctor ## Install Loki, Grafana and the OpenTelemetry Collector
 	@$(KUBECTL) apply -f deploy/observability/namespaces.yaml

@@ -27,4 +27,16 @@ public sealed class TenancyOptions
     /// The tenant every request acts for until tenants come from access tokens.
     /// </summary>
     public Guid? DevelopmentTenantId { get; set; }
+
+    /// <summary>
+    /// PEM CA file used when a tenant database requires <c>VerifyFull</c> / <c>VerifyCA</c>
+    /// (on-premises TLS). Empty when only managed databases with <c>SslMode=Disable</c> are used.
+    /// </summary>
+    public string? RootCertificatePath { get; set; }
+
+    /// <summary>
+    /// Cap on opening a tenant database so an unreachable on-prem host fails within the SLA (NFR-REL-06).
+    /// </summary>
+    [Range(1, 60)]
+    public int ConnectTimeoutSeconds { get; set; } = 2;
 }

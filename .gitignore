@@ -28,3 +28,4 @@ test-results/
 .kube/
 *.pem
 .local-secrets/
+deploy/onprem/certs/

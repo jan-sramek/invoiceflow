@@ -12,4 +12,9 @@ public sealed class SchemaMigrationOptions
     /// </summary>
     [Required]
     public string CredentialsPath { get; set; } = "/var/run/secrets/invoiceflow/tenant-migrations";
+
+    /// <summary>
+    /// PEM CA file for on-premises tenant databases that require certificate verification.
+    /// </summary>
+    public string? RootCertificatePath { get; set; }
 }
