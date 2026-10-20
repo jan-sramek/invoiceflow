@@ -134,7 +134,7 @@ internal sealed partial class OutboxPublisher(
                 InvoiceFlowTopology.EventsExchange,
                 InvoiceFlowTopology.UploadedRoutingKey,
                 body,
-                headers: null,
+                headers: MessagingTraceContext.ToRabbitHeaders(message.Headers),
                 messageId: message.Id.ToString("D"),
                 cancellationToken);
 

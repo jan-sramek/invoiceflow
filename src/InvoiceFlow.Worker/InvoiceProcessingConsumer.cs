@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text.Json;
 using InvoiceFlow.Domain.Invoices;
@@ -177,6 +178,12 @@ internal sealed partial class InvoiceProcessingConsumer(
         var tenantId = new TenantId(message.TenantId);
         var invoiceId = new InvoiceId(message.InvoiceId);
 
+        using Activity? activity = MessagingTraceContext.StartConsumerActivity(
+            "invoice.uploaded", args.BasicProperties.Headers);
+        activity?.SetTag("invoice.id", invoiceId.Value);
+        activity?.SetTag("tenant.id", tenantId.Value);
+        activity?.SetTag("messaging.message_id", messageId);
+
         try
         {
             using (MessageTenantContext.Use(tenantId))
@@ -196,12 +203,14 @@ internal sealed partial class InvoiceProcessingConsumer(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            activity?.SetStatus(ActivityStatusCode.Error);
             LogProcessingFailed(logger, exception, invoiceId.Value, attempt);
 
             string? retryKey = RetryRouting.NextRetryRoutingKey(attempt);
             if (retryKey is not null)
             {
-                await PublishRetryAsync(broker, body, attempt + 1, retryKey, messageId, CancellationToken.None);
+                await PublishRetryAsync(
+                    broker, body, attempt + 1, retryKey, messageId, args.BasicProperties.Headers, CancellationToken.None);
                 await channel.BasicAckAsync(args.DeliveryTag, multiple: false, cancellationToken: CancellationToken.None);
                 return;
             }
@@ -234,12 +243,14 @@ internal sealed partial class InvoiceProcessingConsumer(
         int nextAttempt,
         string routingKey,
         Guid messageId,
+        IDictionary<string, object?>? existingHeaders,
         CancellationToken cancellationToken)
     {
         Dictionary<string, object?> headers = new()
         {
             [InvoiceFlowTopology.AttemptHeader] = nextAttempt,
         };
+        MessagingTraceContext.CopyTraceHeaders(existingHeaders, headers);
 
         await broker.PublishAsync(
             InvoiceFlowTopology.RetryExchange,
@@ -260,10 +271,11 @@ internal sealed partial class InvoiceProcessingConsumer(
         Guid messageId,
         CancellationToken cancellationToken)
     {
-        Dictionary<string, object?> headers = existingHeaders is null
-            ? new Dictionary<string, object?>()
-            : new Dictionary<string, object?>(existingHeaders);
-        headers[InvoiceFlowTopology.AttemptHeader] = attempt;
+        Dictionary<string, object?> headers = new()
+        {
+            [InvoiceFlowTopology.AttemptHeader] = attempt,
+        };
+        MessagingTraceContext.CopyTraceHeaders(existingHeaders, headers);
 
         await broker.PublishAsync(
             InvoiceFlowTopology.DlxExchange,

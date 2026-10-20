@@ -24,6 +24,7 @@ internal sealed class OutboxInvoiceEventPublisher(TenantDbContext db, TimeProvid
             Id = id,
             Type = OutboxMessage.InvoiceUploadedType,
             Payload = payload,
+            Headers = MessagingTraceContext.CaptureJson(),
             CreatedAt = now,
         });
 
