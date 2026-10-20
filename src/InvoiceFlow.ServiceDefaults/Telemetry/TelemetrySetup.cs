@@ -32,6 +32,7 @@ internal static class TelemetrySetup
             .WithMetrics(metrics =>
             {
                 metrics
+                    .AddMeter("InvoiceFlow.Tenancy")
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation();

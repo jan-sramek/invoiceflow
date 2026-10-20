@@ -30,11 +30,14 @@ public static class InfrastructureServiceCollectionExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
         services.AddMemoryCache();
+        services.AddMetrics();
         services.TryAddSingleton(TimeProvider.System);
 
         services.AddScoped<ITenantContext, DevelopmentTenantContext>();
         services.AddSingleton<TenantConnectionResolver>();
         services.AddSingleton<TenantDatabaseVerifier>();
+        services.AddSingleton<TenantDatabaseResilience>();
+        services.AddSingleton<TenantDatabaseMetrics>();
         services.AddScoped<TenantConnectionInterceptor>();
         services.AddDbContext<TenantDbContext>((provider, options) =>
             TenantDbContext.Configure(options).AddInterceptors(provider.GetRequiredService<TenantConnectionInterceptor>()));

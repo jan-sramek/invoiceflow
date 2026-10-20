@@ -53,6 +53,8 @@ spec:
             # The catalog owner, so it can change the schema
             - name: ConnectionStrings__Catalog
               value: Host=postgres.invoiceflow-infra.svc.cluster.local;Database=invoiceflow_catalog;Username=catalog_migrator;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
+            - name: SchemaMigration__RootCertificatePath
+              value: /var/run/secrets/invoiceflow/onprem-ca/ca.crt
           resources:
             requests:
               cpu: 50m
@@ -71,6 +73,9 @@ spec:
             - name: tenant-migrations
               mountPath: /var/run/secrets/invoiceflow/tenant-migrations
               readOnly: true
+            - name: onprem-ca
+              mountPath: /var/run/secrets/invoiceflow/onprem-ca
+              readOnly: true
       volumes:
         - name: tmp
           emptyDir: {}
@@ -79,3 +84,7 @@ spec:
           secret:
             secretName: invoiceflow-tenant-migrations
             defaultMode: 0440
+        - name: onprem-ca
+          configMap:
+            name: onprem-postgres-ca
+            optional: true

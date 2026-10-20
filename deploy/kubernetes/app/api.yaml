@@ -90,6 +90,11 @@ spec:
                 secretKeyRef:
                   name: rabbitmq-api
                   key: password
+            # Present after make onprem-spike / provision-tenant; optional so stack-up works without on-prem.
+            - name: Tenancy__RootCertificatePath
+              value: /var/run/secrets/invoiceflow/onprem-ca/ca.crt
+            - name: Tenancy__ConnectTimeoutSeconds
+              value: "2"
           ports:
             - name: http
               containerPort: 8080
@@ -128,6 +133,9 @@ spec:
             - name: tenant-databases
               mountPath: /var/run/secrets/invoiceflow/tenant-databases
               readOnly: true
+            - name: onprem-ca
+              mountPath: /var/run/secrets/invoiceflow/onprem-ca
+              readOnly: true
       volumes:
         - name: tmp
           emptyDir: {}
@@ -136,6 +144,10 @@ spec:
           secret:
             secretName: invoiceflow-tenant-databases
             defaultMode: 0440
+        - name: onprem-ca
+          configMap:
+            name: onprem-postgres-ca
+            optional: true
 ---
 apiVersion: v1
 kind: Service

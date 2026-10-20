@@ -33,6 +33,9 @@ public sealed class ErrorTestController : ControllerBase
     public IActionResult Unavailable() =>
         throw new TenantUnavailableException(new InvalidOperationException(UnexpectedMessage));
 
+    [HttpGet("maintenance")]
+    public IActionResult Maintenance() => throw new TenantMaintenanceException();
+
     [HttpGet("not-ready")]
     public IActionResult NotReady() => throw new InvoiceNotReadyException(
     [

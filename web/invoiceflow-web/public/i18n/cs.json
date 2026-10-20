@@ -121,7 +121,8 @@
       "stale_version": "Někdo fakturu změnil po tom, co jste ji otevřeli. Načtěte ji znovu a zkuste to znovu."
     },
     "tenant": {
-      "unavailable": "Data vaší organizace jsou dočasně nedostupná. Zkuste to za chvíli."
+      "unavailable": "Data vaší organizace jsou dočasně nedostupná. Zkuste to za chvíli.",
+      "maintenance": "Datové úložiště vaší organizace je v údržbě. Zkuste to za chvíli."
     },
     "storage": {
       "unavailable": "Úložiště dokumentů je dočasně nedostupné. Zkuste to za chvíli."

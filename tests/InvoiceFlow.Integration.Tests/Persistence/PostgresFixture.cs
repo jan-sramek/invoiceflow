@@ -106,8 +106,12 @@ public sealed class PostgresFixture : IAsyncLifetime
 
         await ExecuteAsync(database, $"INSERT INTO tenant_settings (tenant_id) VALUES ('{tenantId.Value}')");
         await WriteCredentialsAsync(_credentials.FullName, database);
-        await UpdateCatalogAsync(catalog =>
-            catalog.Tenants.AddAsync(CatalogEntry(tenantId, database, runtimeRole: Server.Username!)).AsTask());
+        CatalogTenant entry = CatalogEntry(tenantId, database, runtimeRole: Server.Username!);
+        // Template is already migrated; stamp the catalog so runtime maintenance gating passes.
+        TenantDatabase tenantDatabase = entry.Database
+            ?? throw new InvalidOperationException("Catalog entry must include a database.");
+        tenantDatabase.SchemaVersion = TenantSchemaRequirements.LatestMigrationId;
+        await UpdateCatalogAsync(catalog => catalog.Tenants.AddAsync(entry).AsTask());
 
         return new TestTenant(tenantId, database);
     }

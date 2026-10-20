@@ -16,6 +16,7 @@ public class ErrorContractTests
     [InlineData("/test/errors/forbidden", HttpStatusCode.Forbidden, "approval.own_invoice")]
     [InlineData("/test/errors/stale", HttpStatusCode.PreconditionFailed, "concurrency.stale_version")]
     [InlineData("/test/errors/unavailable", HttpStatusCode.ServiceUnavailable, "tenant.unavailable")]
+    [InlineData("/test/errors/maintenance", HttpStatusCode.ServiceUnavailable, "tenant.maintenance")]
     [InlineData("/test/errors/unexpected", HttpStatusCode.InternalServerError, "server.unexpected")]
     [InlineData("/api/v1/missing", HttpStatusCode.NotFound, "request.not_found")]
     public async Task Error_AnySource_ReturnsProblemDetailsWithCode(string path, HttpStatusCode status, string code)

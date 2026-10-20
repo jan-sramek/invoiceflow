@@ -17,6 +17,7 @@ internal sealed class TenantConnectionResolver(
     IOptions<TenancyOptions> options)
 {
     /// <exception cref="TenantUnavailableException">Unknown or inactive tenant, or no readable credentials.</exception>
+    /// <exception cref="TenantMaintenanceException">Schema behind, missing, or last migration failed.</exception>
     public async Task<string> GetConnectionStringAsync(TenantId tenantId, CancellationToken cancellationToken) =>
         (await cache.GetOrCreateAsync(
             (nameof(TenantConnectionResolver), tenantId),
@@ -35,11 +36,30 @@ internal sealed class TenantConnectionResolver(
             .SingleOrDefaultAsync(cancellationToken)
             ?? throw new TenantUnavailableException();
 
+        EnsureSchemaReady(database);
+
         TenantCredentials credentials = await TenantCredentials.ReadAsync(
             options.Value.CredentialsPath, database.CredentialsKey, cancellationToken);
 
-        NpgsqlConnectionStringBuilder connectionString = credentials.ConnectTo(database);
+        NpgsqlConnectionStringBuilder connectionString = credentials.ConnectTo(
+            database,
+            options.Value.RootCertificatePath,
+            options.Value.ConnectTimeoutSeconds);
         connectionString.MaxPoolSize = options.Value.MaxPoolSize;
         return connectionString.ConnectionString;
+    }
+
+    private static void EnsureSchemaReady(TenantDatabase database)
+    {
+        if (database.LastMigrationError is not null)
+        {
+            throw new TenantMaintenanceException();
+        }
+
+        if (database.SchemaVersion is null
+            || string.CompareOrdinal(database.SchemaVersion, TenantSchemaRequirements.LatestMigrationId) < 0)
+        {
+            throw new TenantMaintenanceException();
+        }
     }
 }
