@@ -1,42 +1,49 @@
-using System.Text.Json;
-using InvoiceFlow.Application.Abstractions.Messaging;
-using InvoiceFlow.Domain.Invoices;
-using InvoiceFlow.Domain.Tenants;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 
 namespace InvoiceFlow.Infrastructure.Messaging;
 
-internal sealed partial class RabbitMqInvoiceEventPublisher(
+/// <summary>
+/// Shared RabbitMQ connection with publisher confirms for outbox drain and worker retry/DLQ publishes.
+/// </summary>
+internal sealed partial class RabbitMqBroker(
     IOptions<RabbitMqOptions> options,
-    ILogger<RabbitMqInvoiceEventPublisher> logger) : IInvoiceEventPublisher, IAsyncDisposable
+    ILogger<RabbitMqBroker> logger) : IAsyncDisposable
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
     private readonly SemaphoreSlim _gate = new(1, 1);
     private IConnection? _connection;
     private IChannel? _channel;
 
-    public async Task PublishUploadedAsync(TenantId tenantId, InvoiceId invoiceId, CancellationToken cancellationToken)
+    public async Task PublishAsync(
+        string exchange,
+        string routingKey,
+        ReadOnlyMemory<byte> body,
+        IDictionary<string, object?>? headers,
+        string? messageId,
+        CancellationToken cancellationToken)
     {
-        byte[] body = JsonSerializer.SerializeToUtf8Bytes(
-            new InvoiceUploadedMessage(tenantId.Value, invoiceId.Value), JsonOptions);
-
         await _gate.WaitAsync(cancellationToken);
         try
         {
             IChannel channel = await EnsureChannelAsync(cancellationToken);
-            var properties = new BasicProperties { ContentType = "application/json", DeliveryMode = DeliveryModes.Persistent };
+            var properties = new BasicProperties
+            {
+                ContentType = "application/json",
+                DeliveryMode = DeliveryModes.Persistent,
+                MessageId = messageId,
+                Headers = headers,
+            };
+
             await channel.BasicPublishAsync(
-                exchange: InvoiceFlowTopology.EventsExchange,
-                routingKey: InvoiceFlowTopology.UploadedRoutingKey,
+                exchange: exchange,
+                routingKey: routingKey,
                 mandatory: false,
                 basicProperties: properties,
                 body: body,
                 cancellationToken: cancellationToken);
 
-            LogPublished(logger, tenantId.Value, invoiceId.Value);
+            LogPublished(logger, exchange, routingKey, messageId);
         }
         finally
         {
@@ -64,7 +71,10 @@ internal sealed partial class RabbitMqInvoiceEventPublisher(
         };
 
         _connection = await factory.CreateConnectionAsync(cancellationToken);
-        _channel = await _connection.CreateChannelAsync(cancellationToken: cancellationToken);
+        var channelOptions = new CreateChannelOptions(
+            publisherConfirmationsEnabled: true,
+            publisherConfirmationTrackingEnabled: true);
+        _channel = await _connection.CreateChannelAsync(channelOptions, cancellationToken);
         return _channel;
     }
 
@@ -97,6 +107,6 @@ internal sealed partial class RabbitMqInvoiceEventPublisher(
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Published invoice.uploaded for tenant {TenantId} invoice {InvoiceId}")]
-    private static partial void LogPublished(ILogger logger, Guid tenantId, Guid invoiceId);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Published to {Exchange}/{RoutingKey} (messageId={MessageId})")]
+    private static partial void LogPublished(ILogger logger, string exchange, string routingKey, string? messageId);
 }

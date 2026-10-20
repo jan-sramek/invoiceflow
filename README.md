@@ -17,9 +17,9 @@ Stage 1 UI lives in [`web/invoiceflow-web`](web/invoiceflow-web).
 
 ## Invoice processing (Stage 5–7)
 
-- After a successful upload commit, the API publishes `{ tenantId, invoiceId }` to the durable topic exchange `invoiceflow.events` with routing key `invoice.uploaded`.
-- The worker consumes the durable queue `invoice-processing`, sets the tenant from the message, runs extraction, then moves the invoice to **Needs review** (or **Extraction failed** on hard errors / exhausted retries).
-- Topology is admin-only: `make rabbitmq-up` runs [`scripts/rabbitmq-users.sh`](scripts/rabbitmq-users.sh) and [`scripts/rabbitmq-topology.sh`](scripts/rabbitmq-topology.sh). Applications must not declare exchanges or queues.
+- Upload and retry write `{ tenantId, invoiceId }` into a tenant **transactional outbox** (`outbox_messages`) in the same DB commit as the invoice change. The API’s `OutboxPublisher` drains unpublished rows to RabbitMQ with publisher confirms (only when `RabbitMq:Host` is set).
+- The worker consumes the quorum queue `invoice-processing`. Business extraction failures mark **Extraction failed** and ack. Technical failures publish to TTL retry queues (`invoice-processing.retry.10s|1m|5m`) then ack; after those are exhausted the invoice is failed and the message goes to `invoice-processing.dlq`. Poison JSON also goes to the DLQ (not silent drop).
+- Topology is admin-only: `make rabbitmq-up` runs [`scripts/rabbitmq-users.sh`](scripts/rabbitmq-users.sh) and [`scripts/rabbitmq-topology.sh`](scripts/rabbitmq-topology.sh). Applications must not declare exchanges or queues. **Queue arguments are immutable** — if `invoice-processing` already exists as a classic queue, delete it before re-running the topology script (see the script header).
 - `make stack-up` includes RabbitMQ. With `DocumentExtraction:ServiceUrl` (Ollama on the host, model `qwen3:0.6b` in the cluster) the worker uses **PdfPig** to read the PDF text layer, then asks Ollama for fields. PDFs without a text layer fail with `extraction.no_text_layer` (scanned/OCR is Stage 9). Without that URL the worker uses a stub extractor so local Windows and tests stay usable.
 
 ## End-to-end tests

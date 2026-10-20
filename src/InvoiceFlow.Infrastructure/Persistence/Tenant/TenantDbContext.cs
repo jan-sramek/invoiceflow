@@ -3,6 +3,7 @@ using InvoiceFlow.Application.Audit;
 using InvoiceFlow.Domain.Common;
 using InvoiceFlow.Domain.Invoices;
 using InvoiceFlow.Domain.Tenants;
+using InvoiceFlow.Infrastructure.Messaging;
 using InvoiceFlow.Infrastructure.Persistence.Idempotency;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,6 +23,8 @@ internal sealed class TenantDbContext(DbContextOptions<TenantDbContext> options,
     public DbSet<TenantSettings> Settings => Set<TenantSettings>();
 
     public DbSet<IdempotencyRecord> IdempotencyKeys => Set<IdempotencyRecord>();
+
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     /// <summary>
     /// Without a connection string, <see cref="Tenancy.TenantConnectionInterceptor"/> routes the connection.
@@ -65,6 +68,18 @@ internal sealed class TenantDbContext(DbContextOptions<TenantDbContext> options,
             idempotency.Property(r => r.UserId).HasMaxLength(100);
             idempotency.Property(r => r.RequestHash).HasMaxLength(64);
             idempotency.HasIndex(r => r.CreatedAt);
+        });
+
+        modelBuilder.Entity<OutboxMessage>(outbox =>
+        {
+            outbox.ToTable("outbox_messages");
+            outbox.HasKey(m => m.Id);
+            outbox.Property(m => m.Type).HasMaxLength(100);
+            outbox.Property(m => m.Payload).HasColumnType("jsonb");
+            outbox.Property(m => m.Headers).HasColumnType("jsonb");
+            outbox.HasIndex(m => m.CreatedAt)
+                .HasFilter("published_at IS NULL")
+                .HasDatabaseName("ix_outbox_messages_unpublished");
         });
 
         // Second line of defence: the database already belongs to one tenant.

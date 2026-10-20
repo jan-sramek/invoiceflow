@@ -77,25 +77,28 @@ public class InvoiceProcessingServiceTests
     }
 
     [Fact]
-    public async Task ProcessAsync_StorageFailure_FailsExtraction()
+    public async Task ProcessAsync_StorageFailure_RethrowsTechnicalError()
     {
         var documentId = Guid.CreateVersion7(Now);
         byte[] pdf = "%PDF-1.4 stub"u8.ToArray();
         string sha256 = Convert.ToHexString(SHA256.HashData(pdf)).ToLowerInvariant();
         var document = InvoiceDocument.Create(documentId, "missing-key", "invoice.pdf", pdf.Length, sha256);
         var invoice = Invoice.Upload(Clerk, Now, document);
+        var unitOfWork = new FakeUnitOfWork();
 
         var service = new InvoiceProcessingService(
             new FakeInvoiceRepository(invoice),
             new InMemoryDocumentStorage(),
             new StubInvoiceExtractor(),
-            new FakeUnitOfWork(),
+            unitOfWork,
             TimeProvider.System,
             NullLogger<InvoiceProcessingService>.Instance);
 
-        await service.ProcessAsync(invoice.Id, TestContext.Current.CancellationToken);
+        await Should.ThrowAsync<Exception>(() =>
+            service.ProcessAsync(invoice.Id, TestContext.Current.CancellationToken));
 
-        invoice.Status.ShouldBe(InvoiceStatus.ExtractionFailed);
+        invoice.Status.ShouldNotBe(InvoiceStatus.ExtractionFailed);
+        unitOfWork.Committed.ShouldBeFalse();
     }
 
     private sealed class FixedExtractor(ExtractionResult result) : IInvoiceExtractor

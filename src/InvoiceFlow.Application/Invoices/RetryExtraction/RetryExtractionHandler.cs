@@ -1,9 +1,8 @@
 using InvoiceFlow.Application.Abstractions.Context;
 using InvoiceFlow.Application.Abstractions.Messaging;
 using InvoiceFlow.Application.Abstractions.Persistence;
-using InvoiceFlow.Domain.Common;
+using InvoiceFlow.Application.Errors;
 using InvoiceFlow.Domain.Invoices;
-using InvoiceFlow.Domain.Tenants;
 
 namespace InvoiceFlow.Application.Invoices.RetryExtraction;
 
@@ -11,17 +10,16 @@ internal sealed class RetryExtractionHandler(
     IInvoiceRepository invoices,
     ICurrentUser user,
     ITenantContext tenant,
-    IUnitOfWork unitOfWork,
     IInvoiceEventPublisher events,
-    TimeProvider time) : InvoiceCommandHandler<RetryExtractionCommand>(invoices, user, time)
+    TimeProvider time) : ICommandHandler<RetryExtractionCommand, InvoiceId>
 {
-    protected override void Apply(
-        Invoice invoice, RetryExtractionCommand command, Actor actor, DateTimeOffset now)
+    public async Task<InvoiceId> HandleAsync(RetryExtractionCommand command, CancellationToken cancellationToken)
     {
-        invoice.RetryExtraction(actor, now);
+        Invoice invoice = await invoices.GetAsync(command.Id, command.ExpectedVersion, cancellationToken)
+            ?? throw new InvoiceNotFoundException();
 
-        TenantId tenantId = tenant.TenantId;
-        InvoiceId invoiceId = invoice.Id;
-        unitOfWork.AfterCommit(ct => events.PublishUploadedAsync(tenantId, invoiceId, ct));
+        invoice.RetryExtraction(user.Actor, time.GetUtcNow());
+        await events.PublishUploadedAsync(tenant.TenantId, invoice.Id, cancellationToken);
+        return invoice.Id;
     }
 }

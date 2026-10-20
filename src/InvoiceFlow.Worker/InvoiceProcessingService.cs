@@ -8,6 +8,7 @@ namespace InvoiceFlow.Worker;
 
 /// <summary>
 /// Loads an uploaded invoice, extracts fields, and moves it to review or extraction-failed.
+/// Technical failures (storage/HTTP/DB) are rethrown so the consumer can route to TTL retry / DLQ.
 /// </summary>
 internal sealed partial class InvoiceProcessingService(
     IInvoiceRepository invoices,
@@ -40,32 +41,24 @@ internal sealed partial class InvoiceProcessingService(
             invoice.StartProcessing(WorkerActor, now);
         }
 
-        try
-        {
-            await using Stream pdf = await storage.OpenReadAsync(invoice.Document.StorageKey, cancellationToken);
-            ExtractionResult result = await extractor.ExtractAsync(pdf, cancellationToken);
+        await using Stream pdf = await storage.OpenReadAsync(invoice.Document.StorageKey, cancellationToken);
+        ExtractionResult result = await extractor.ExtractAsync(pdf, cancellationToken);
 
-            switch (result)
-            {
-                case ExtractionResult.Succeeded succeeded:
-                    invoice.RequireReview(WorkerActor, time.GetUtcNow());
-                    if (succeeded.Fields != InvoiceFields.Empty)
-                    {
-                        invoice.UpdateFields(WorkerActor, time.GetUtcNow(), succeeded.Fields);
-                    }
-
-                    break;
-                case ExtractionResult.Failed failed:
-                    FailProcessing(invoice, failed.Code);
-                    break;
-                default:
-                    throw new InvalidOperationException($"Unexpected extraction result {result.GetType().Name}.");
-            }
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        switch (result)
         {
-            LogExtractionFailed(logger, exception, invoiceId.Value);
-            FailProcessing(invoice, ShortReason(exception));
+            case ExtractionResult.Succeeded succeeded:
+                invoice.RequireReview(WorkerActor, time.GetUtcNow());
+                if (succeeded.Fields != InvoiceFields.Empty)
+                {
+                    invoice.UpdateFields(WorkerActor, time.GetUtcNow(), succeeded.Fields);
+                }
+
+                break;
+            case ExtractionResult.Failed failed:
+                FailProcessing(invoice, failed.Code);
+                break;
+            default:
+                throw new InvalidOperationException($"Unexpected extraction result {result.GetType().Name}.");
         }
 
         await unitOfWork.CommitAsync(cancellationToken);
@@ -99,23 +92,9 @@ internal sealed partial class InvoiceProcessingService(
         }
     }
 
-    private static string ShortReason(Exception exception)
-    {
-        string message = exception.GetBaseException().Message;
-        if (string.IsNullOrWhiteSpace(message))
-        {
-            return "Extraction failed";
-        }
-
-        return message.Length <= Invoice.MaxReasonLength ? message : message[..Invoice.MaxReasonLength];
-    }
-
     [LoggerMessage(Level = LogLevel.Warning, Message = "Invoice {InvoiceId} not found; acknowledging message")]
     private static partial void LogNotFound(ILogger logger, Guid invoiceId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Invoice {InvoiceId} already in status {Status}; skipping")]
     private static partial void LogAlreadyProcessed(ILogger logger, Guid invoiceId, InvoiceStatus status);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Extraction failed for invoice {InvoiceId}")]
-    private static partial void LogExtractionFailed(ILogger logger, Exception exception, Guid invoiceId);
 }

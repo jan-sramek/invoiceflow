@@ -23,5 +23,9 @@ ensure_user() {
 }
 
 # Neither application may declare or change topology
+# API: write only to the events exchange (outbox drain)
 ensure_user invoiceflow-api rabbitmq-api '^$' '^invoiceflow\.events$' '^$'
-ensure_user invoiceflow-worker rabbitmq-worker '^$' '^$' '^invoice-processing(\..+)?$'
+# Worker: read processing (+ retry/DLQ names if needed); write retry + DLX exchanges
+ensure_user invoiceflow-worker rabbitmq-worker '^$' \
+  '^(invoiceflow\.retry|invoiceflow\.dlx)$' \
+  '^invoice-processing(\..+)?$'
