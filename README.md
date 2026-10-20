@@ -23,6 +23,7 @@ Stage 1 UI lives in [`web/invoiceflow-web`](web/invoiceflow-web).
 - On SIGTERM the worker **cancels the consumer first**, waits up to two minutes for in-flight extraction, then exits; any still-unacked message is requeued by RabbitMQ. The Deployment sets `terminationGracePeriodSeconds: 180`.
 - Topology is admin-only: `make rabbitmq-up` runs [`scripts/rabbitmq-users.sh`](scripts/rabbitmq-users.sh) and [`scripts/rabbitmq-topology.sh`](scripts/rabbitmq-topology.sh). Applications must not declare exchanges or queues. **Queue arguments are immutable** — if `invoice-processing` already exists as a classic queue, delete it before re-running the topology script (see the script header).
 - `make stack-up` includes RabbitMQ. With `DocumentExtraction:ServiceUrl` (Ollama on the host, model `qwen3:0.6b` in the cluster) the worker uses **PdfPig** to read the PDF text layer, then asks Ollama for fields. PDFs without a text layer fail with `extraction.no_text_layer` (scanned/OCR is Stage 9). Without that URL the worker uses a **configurable fake extractor** (`FakeExtractor:Delay`, `FailureRate`, `FailureMode` Technical|Business) so local Windows, tests, and retry drills stay deterministic.
+- Ops: [`docs/runbooks/find-failed-invoice.md`](docs/runbooks/find-failed-invoice.md) (trace a failed invoice) and [`docs/runbooks/stage5-failure-experiments.md`](docs/runbooks/stage5-failure-experiments.md) (loss/duplication drills).
 
 ## End-to-end tests
 
