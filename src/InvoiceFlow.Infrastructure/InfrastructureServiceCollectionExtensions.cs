@@ -159,7 +159,11 @@ public static class InfrastructureServiceCollectionExtensions
         IConfigurationSection section = configuration.GetSection(DocumentExtractionOptions.SectionName);
         if (!section.Exists() || string.IsNullOrWhiteSpace(section["ServiceUrl"]))
         {
-            services.AddSingleton<IInvoiceExtractor, StubInvoiceExtractor>();
+            services.AddOptions<FakeExtractorOptions>()
+                .Bind(configuration.GetSection(FakeExtractorOptions.SectionName))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+            services.AddSingleton<IInvoiceExtractor, FakeInvoiceExtractor>();
             return;
         }
 

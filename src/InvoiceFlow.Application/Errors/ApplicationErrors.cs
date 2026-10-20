@@ -84,5 +84,8 @@ public static class ApplicationErrors
 
         [Description("Model output was not usable")]
         public const string InvalidModelOutput = "extraction.invalid_model_output";
+
+        [Description("Fake extractor simulated a business failure")]
+        public const string FakeFailed = "extraction.fake_failed";
     }
 }
