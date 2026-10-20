@@ -115,6 +115,27 @@ public static class InfrastructureServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Hosts the stuck-Processing sweeper. Call from the worker when RabbitMQ is configured.
+    /// </summary>
+    public static IServiceCollection AddProcessingSweeper(this IServiceCollection services, IConfiguration? configuration = null)
+    {
+        if (configuration is not null)
+        {
+            services.AddOptions<ProcessingSweeperOptions>()
+                .Bind(configuration.GetSection(ProcessingSweeperOptions.SectionName))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+        }
+        else
+        {
+            services.AddOptions<ProcessingSweeperOptions>();
+        }
+
+        services.AddHostedService<ProcessingSweeper>();
+        return services;
+    }
+
     private static void AddMessaging(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IInvoiceEventPublisher, OutboxInvoiceEventPublisher>();
