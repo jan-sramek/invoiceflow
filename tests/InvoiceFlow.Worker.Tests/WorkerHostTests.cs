@@ -62,4 +62,13 @@ public class WorkerHostTests
         background.ExecuteTask.IsCompleted.ShouldBeTrue();
         logs.GetSnapshot().ShouldNotContain(record => record.Level >= LogLevel.Error);
     }
+
+    [Fact]
+    public async Task Host_ShutdownTimeout_ExceedsInFlightDrain()
+    {
+        await using WorkerFactory worker = new();
+        HostOptions hostOptions = worker.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<HostOptions>>().Value;
+
+        hostOptions.ShutdownTimeout.ShouldBeGreaterThan(InvoiceProcessingConsumer.InFlightDrainTimeout);
+    }
 }

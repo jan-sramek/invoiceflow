@@ -7,6 +7,9 @@ using InvoiceFlow.Worker;
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+// ≥ Ollama HTTP timeout (2 min) so in-flight extraction can finish or be requeued cleanly.
+builder.Services.Configure<HostOptions>(options =>
+    options.ShutdownTimeout = InvoiceProcessingConsumer.InFlightDrainTimeout + TimeSpan.FromSeconds(30));
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddMessageTenantContext();
 builder.Services.AddScoped<InvoiceProcessingService>();
