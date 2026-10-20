@@ -10,6 +10,11 @@ builder.AddServiceDefaults();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddMessageTenantContext();
 builder.Services.AddScoped<InvoiceProcessingService>();
+if (!string.IsNullOrWhiteSpace(builder.Configuration["RabbitMq:Host"]))
+{
+    builder.Services.AddProcessingSweeper(builder.Configuration);
+}
+
 builder.Services.AddHealthChecks().AddCatalogCheck(HealthEndpoints.ReadyTag);
 builder.Services.AddHostedService<InvoiceProcessingConsumer>();
 

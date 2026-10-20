@@ -45,6 +45,12 @@ public sealed class PostgresFixture : IAsyncLifetime
     /// </summary>
     public string CredentialsPath => _credentials.FullName;
 
+    /// <summary>
+    /// Root DI container used by <see cref="OpenScope"/> (catalog factory, connection resolver, etc.).
+    /// </summary>
+    internal IServiceProvider Services =>
+        _services ?? throw new InvalidOperationException("Not initialised.");
+
     public async ValueTask InitializeAsync()
     {
         await _container.StartAsync();
