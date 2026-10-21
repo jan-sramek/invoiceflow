@@ -44,6 +44,7 @@ Same entrypoint the workflow uses (requires Docker, k3d, kubectl, helm, Node 24)
 export CI=true
 export KUBECONFIG="$PWD/.kube/config"
 export INVOICEFLOW_BACKUP_DIR="${INVOICEFLOW_BACKUP_DIR:-$HOME/.local/share/invoiceflow/backups}"
+# Optional: REGISTRY=127.0.0.1:5001 (default when CI=true) avoids localhost → ::1 push failures
 make e2e-ci
 ```
 

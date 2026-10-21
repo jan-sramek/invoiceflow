@@ -27,7 +27,7 @@ spec:
       containers:
         - name: keycloak
           # make keycloak-up fills in the tag
-          image: localhost:5001/invoiceflow-keycloak:${KEYCLOAK_TAG}
+          image: ${REGISTRY}/invoiceflow-keycloak:${KEYCLOAK_TAG}
           args:
             - start
             - --optimized

@@ -28,7 +28,7 @@ spec:
       containers:
         - name: api
           # make app-up fills in the tag
-          image: localhost:5001/invoiceflow-api:${IMAGE_TAG}
+          image: ${REGISTRY}/invoiceflow-api:${IMAGE_TAG}
           env:
             - name: NODE_IP
               valueFrom:

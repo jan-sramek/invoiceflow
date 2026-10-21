@@ -28,7 +28,7 @@ spec:
       containers:
         - name: web
           # make app-up fills in the tag
-          image: localhost:5001/invoiceflow-web:${IMAGE_TAG}
+          image: ${REGISTRY}/invoiceflow-web:${IMAGE_TAG}
           ports:
             - name: http
               containerPort: 8080

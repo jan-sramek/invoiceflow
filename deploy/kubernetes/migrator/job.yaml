@@ -29,7 +29,7 @@ spec:
       containers:
         - name: migrator
           # make db-migrate fills in the tag
-          image: localhost:5001/invoiceflow-migrator:${IMAGE_TAG}
+          image: ${REGISTRY}/invoiceflow-migrator:${IMAGE_TAG}
           env:
             - name: NODE_IP
               valueFrom:

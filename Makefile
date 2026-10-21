@@ -32,8 +32,16 @@ KEYCLOAK_ADMIN_PORT := 18080
 KEYCLOAK_TAG := $(shell git hash-object deploy/images/keycloak/Dockerfile | cut -c1-12)
 DASHBOARD_IMAGE := $(shell grep -o 'mcr.microsoft.com/dotnet/aspire-dashboard[^ ]*' deploy/observability/aspire-dashboard.yaml)
 DASHBOARD_TOKEN_PATTERN := login?t=[0-9a-f]*
-REGISTRY := localhost:5001
+# Prefer 127.0.0.1 in CI: localhost often resolves to ::1, but k3d binds the registry to IPv4 only.
+ifeq ($(CI),true)
+REGISTRY ?= 127.0.0.1:5001
+else
+REGISTRY ?= localhost:5001
+endif
+export REGISTRY
 APPS := Api Worker Migrator
+
+
 # Fixed, so every rebuild of the local environment gets the same tenant; not a secret
 DEVELOPMENT_TENANT_ID := 01a130f4-cc70-7419-9b64-feec3b283b96
 # Commit-based tags; uncommitted changes get a unique suffix so every build rolls out
@@ -249,6 +257,7 @@ app-up: images db-migrate ## Build the images, migrate the databases and deploy 
 		--dry-run=client -o yaml | $(KUBECTL) apply -f -
 	@for manifest in deploy/kubernetes/app/*.yaml; do \
 		sed -e 's/$${IMAGE_TAG}/$(IMAGE_TAG)/g' \
+			-e 's|$${REGISTRY}|$(REGISTRY)|g' \
 			-e 's/$${DEVELOPMENT_TENANT_ID}/$(DEVELOPMENT_TENANT_ID)/g' \
 			-e 's|$${DOCUMENT_EXTRACTION_SERVICE_URL}|$(DOCUMENT_EXTRACTION_SERVICE_URL)|g' \
 			$$manifest; echo ---; \
@@ -303,7 +312,8 @@ keycloak-up: keycloak-image ## Install Keycloak with the invoiceflow realm (run 
 	@$(KUBECTL) -n $(INFRA_NS) create configmap keycloak-realm \
 		--from-file=invoiceflow-realm.json=deploy/keycloak/invoiceflow-realm.json \
 		--dry-run=client -o yaml | $(KUBECTL) apply -f -
-	@sed 's/$${KEYCLOAK_TAG}/$(KEYCLOAK_TAG)/g' deploy/kubernetes/keycloak/keycloak.yaml | $(KUBECTL) apply -f -
+	@sed -e 's/$${KEYCLOAK_TAG}/$(KEYCLOAK_TAG)/g' -e 's|$${REGISTRY}|$(REGISTRY)|g' \
+		deploy/kubernetes/keycloak/keycloak.yaml | $(KUBECTL) apply -f -
 	@$(KUBECTL) rollout status deployment/keycloak --namespace $(INFRA_NS) --timeout 5m
 	@./scripts/keycloak-users.sh
 	@echo "Sign-in: https://auth.invoiceflow.localhost:8080/realms/invoiceflow/account"

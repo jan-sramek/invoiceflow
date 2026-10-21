@@ -5,6 +5,7 @@ set -euo pipefail
 
 tag="$1"
 root="$(cd "$(dirname "$0")/.." && pwd)"
+registry="${REGISTRY:-localhost:5001}"
 kubectl=(kubectl --context k3d-invoiceflow -n invoiceflow)
 
 if ! "${kubectl[@]}" get secret catalog-migrator >/dev/null 2>&1; then
@@ -14,7 +15,8 @@ fi
 
 # A Job's pod template can't be changed, so every run replaces the previous Job
 "${kubectl[@]}" delete job migrator --ignore-not-found --wait >/dev/null
-sed "s/\${IMAGE_TAG}/$tag/g" "$root/deploy/kubernetes/migrator/job.yaml" | "${kubectl[@]}" apply -f - >/dev/null
+sed -e "s/\${IMAGE_TAG}/$tag/g" -e "s|\${REGISTRY}|$registry|g" \
+  "$root/deploy/kubernetes/migrator/job.yaml" | "${kubectl[@]}" apply -f - >/dev/null
 
 deadline=$((SECONDS + 300))
 until [[ "$("${kubectl[@]}" get job migrator -o jsonpath='{.status.conditions[?(@.status=="True")].type}')" =~ (Complete|Failed) ]]; do

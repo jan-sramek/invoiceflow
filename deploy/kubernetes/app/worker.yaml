@@ -30,7 +30,7 @@ spec:
       containers:
         - name: worker
           # make app-up fills in the tag
-          image: localhost:5001/invoiceflow-worker:${IMAGE_TAG}
+          image: ${REGISTRY}/invoiceflow-worker:${IMAGE_TAG}
           env:
             - name: NODE_IP
               valueFrom:
