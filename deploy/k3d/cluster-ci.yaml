@@ -1,0 +1,45 @@
+# Lighter k3d layout for GitHub Actions (single server, no agents).
+# Same registry and ingress ports as deploy/k3d/cluster.yaml so make stack-up works unchanged.
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: invoiceflow
+servers: 1
+agents: 0
+image: rancher/k3s:v1.35.5-k3s1
+kubeAPI:
+  hostIP: 127.0.0.1
+  hostPort: "6550"
+ports:
+  - port: 127.0.0.1:8080:80
+    nodeFilters:
+      - loadbalancer
+  - port: 127.0.0.1:8443:443
+    nodeFilters:
+      - loadbalancer
+registries:
+  create:
+    name: invoiceflow-registry
+    host: 127.0.0.1
+    hostPort: "5001"
+  config: |
+    mirrors:
+      "localhost:5001":
+        endpoint:
+          - http://invoiceflow-registry:5000
+volumes:
+  - volume: ${INVOICEFLOW_BACKUP_DIR}:/var/backups/invoiceflow
+    nodeFilters:
+      - all
+options:
+  k3s:
+    extraArgs:
+      - arg: --secrets-encryption
+        nodeFilters:
+          - server:*
+      - arg: --disable-network-policy
+        nodeFilters:
+          - server:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true

@@ -1,10 +1,16 @@
 CLUSTER := invoiceflow
 CONTEXT := k3d-$(CLUSTER)
 
-# Set here as well as in .envrc, so make is safe even without direnv
+# Colima locally; CI uses the runner Docker engine (leave DOCKER_HOST unset).
+ifeq ($(CI),true)
+else ifndef DOCKER_HOST
 export DOCKER_HOST := unix://$(HOME)/.colima/invoiceflow/docker.sock
+endif
 export KUBECONFIG := $(CURDIR)/.kube/config
 export INVOICEFLOW_BACKUP_DIR ?= $(HOME)/.local/share/invoiceflow/backups
+K3D_CONFIG ?= deploy/k3d/cluster.yaml
+# Empty ServiceUrl → FakeInvoiceExtractor (CI / drills). Local default targets host Ollama via EndpointSlice.
+DOCUMENT_EXTRACTION_SERVICE_URL ?= http://ollama.invoiceflow.svc.cluster.local:11434
 
 KUBECTL := kubectl --context $(CONTEXT)
 HELM := helm --kube-context $(CONTEXT)
@@ -43,7 +49,7 @@ endif
 	seaweedfs-up seaweedfs-down s3-credentials s3-forward s3-check images web-image \
 	app-up app-down app-check rabbitmq-up rabbitmq-down rabbitmq-password rabbitmq-ui \
 	keycloak-image keycloak-up keycloak-down keycloak-password keycloak-admin trust-local-ca \
-	db-up db-migrate db-down stack-up e2e-install e2e-typecheck e2e-smoke
+	db-up db-migrate db-down stack-up e2e-install e2e-typecheck e2e-smoke e2e-ci
 
 help:
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -67,12 +73,12 @@ down: ollama-down ## Stop Ollama and the VM (the cluster stops with it)
 doctor: ## Check that Docker and kubectl target the local environment only
 	@./scripts/doctor.sh
 
-cluster-up: doctor ## Create the k3d cluster (no-op if it exists)
+cluster-up: doctor ## Create the k3d cluster (no-op if it exists; override with K3D_CONFIG=…)
 	@mkdir -p "$(INVOICEFLOW_BACKUP_DIR)" "$(dir $(KUBECONFIG))"
 	@if k3d cluster list $(CLUSTER) >/dev/null 2>&1; then \
 		echo "Cluster $(CLUSTER) already exists"; \
 	else \
-		k3d cluster create --config deploy/k3d/cluster.yaml; \
+		k3d cluster create --config $(K3D_CONFIG); \
 	fi
 	@./scripts/doctor.sh
 	@# The API server needs a while after the VM starts; kubectl wait fails at once if it can't connect
@@ -242,7 +248,10 @@ app-up: images db-migrate ## Build the images, migrate the databases and deploy 
 		--from-file=config.json=deploy/kubernetes/app/web-config.json \
 		--dry-run=client -o yaml | $(KUBECTL) apply -f -
 	@for manifest in deploy/kubernetes/app/*.yaml; do \
-		sed -e 's/$${IMAGE_TAG}/$(IMAGE_TAG)/g' -e 's/$${DEVELOPMENT_TENANT_ID}/$(DEVELOPMENT_TENANT_ID)/g' $$manifest; echo ---; \
+		sed -e 's/$${IMAGE_TAG}/$(IMAGE_TAG)/g' \
+			-e 's/$${DEVELOPMENT_TENANT_ID}/$(DEVELOPMENT_TENANT_ID)/g' \
+			-e 's|$${DOCUMENT_EXTRACTION_SERVICE_URL}|$(DOCUMENT_EXTRACTION_SERVICE_URL)|g' \
+			$$manifest; echo ---; \
 	done | $(KUBECTL) apply -f -
 	@$(KUBECTL) rollout status deployment/api --namespace $(APP_NS) --timeout 5m
 	@$(KUBECTL) rollout status deployment/worker --namespace $(APP_NS) --timeout 5m
@@ -332,3 +341,9 @@ e2e-typecheck: ## Typecheck the end-to-end tests
 e2e-smoke: ## Upload an invoice through the app in the cluster and check it is listed (BASE_URL overrides the address)
 	@E2E_CLERK_PASSWORD="$$($(KUBECTL) get secret keycloak-users --namespace $(INFRA_NS) -o jsonpath='{.data.clerk}' | base64 -d)" \
 		npm run test:smoke --prefix tests/e2e
+
+# GitHub Actions: single-node k3d, fake extractor (no Ollama), Playwright @smoke against the ingress.
+e2e-ci: ## Create the CI cluster, deploy the stack with the fake extractor, and run e2e smoke
+	@$(MAKE) --no-print-directory cluster-up K3D_CONFIG=deploy/k3d/cluster-ci.yaml
+	@$(MAKE) --no-print-directory stack-up DOCUMENT_EXTRACTION_SERVICE_URL=
+	@$(MAKE) --no-print-directory e2e-install e2e-smoke

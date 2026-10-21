@@ -37,4 +37,4 @@ Unavailable on-prem DBs fail within ~2s as `tenant.unavailable` (503) with a per
 
 ## End-to-end tests
 
-Playwright smoke tests live in [`tests/e2e`](tests/e2e). On macOS against k3d: `make e2e-install`, then `make e2e-smoke` (sign in as Clara Clerk when prompted). On Windows against local `ng serve`, see [`tests/e2e/README.md`](tests/e2e/README.md).
+Playwright smoke tests live in [`tests/e2e`](tests/e2e). CI runs them on a single-node k3d cluster with the fake extractor (`make e2e-ci` / job **Playwright e2e (k3d)**). On macOS against a local cluster: `make e2e-install`, then `make e2e-smoke`. On Windows against local `ng serve`, see [`tests/e2e/README.md`](tests/e2e/README.md).
