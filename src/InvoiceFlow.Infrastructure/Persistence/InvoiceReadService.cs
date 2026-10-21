@@ -37,6 +37,17 @@ internal sealed class InvoiceReadService(TenantDbContext dbContext) : IInvoiceRe
                         i.Fields.TaxAmount,
                         i.Fields.TotalAmount,
                         i.Fields.PurchaseOrderReference == null ? null : i.Fields.PurchaseOrderReference.Value),
+                    new InvoiceFieldStatusesDto(
+                        i.FieldStatuses.SupplierName,
+                        i.FieldStatuses.InvoiceNumber,
+                        i.FieldStatuses.InvoiceDate,
+                        i.FieldStatuses.DueDate,
+                        i.FieldStatuses.Currency,
+                        i.FieldStatuses.Subtotal,
+                        i.FieldStatuses.TaxAmount,
+                        i.FieldStatuses.TotalAmount,
+                        i.FieldStatuses.PurchaseOrderReference),
+                    i.DocumentLanguage,
                     new InvoiceDocumentDto(
                         i.Document.Id,
                         i.Document.OriginalFileName,

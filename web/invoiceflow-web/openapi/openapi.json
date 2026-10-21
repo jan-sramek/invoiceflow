@@ -1500,6 +1500,59 @@
         ],
         "additionalProperties": false
       },
+      "FieldStatus": {
+        "type": "string",
+        "enum": [
+          "Missing",
+          "Valid",
+          "Invalid",
+          "Unverified"
+        ]
+      },
+      "InvoiceFieldStatusesDto": {
+        "type": "object",
+        "properties": {
+          "supplierName": {
+            "$ref": "#/components/schemas/FieldStatus"
+          },
+          "invoiceNumber": {
+            "$ref": "#/components/schemas/FieldStatus"
+          },
+          "invoiceDate": {
+            "$ref": "#/components/schemas/FieldStatus"
+          },
+          "dueDate": {
+            "$ref": "#/components/schemas/FieldStatus"
+          },
+          "currency": {
+            "$ref": "#/components/schemas/FieldStatus"
+          },
+          "subtotal": {
+            "$ref": "#/components/schemas/FieldStatus"
+          },
+          "taxAmount": {
+            "$ref": "#/components/schemas/FieldStatus"
+          },
+          "totalAmount": {
+            "$ref": "#/components/schemas/FieldStatus"
+          },
+          "purchaseOrderReference": {
+            "$ref": "#/components/schemas/FieldStatus"
+          }
+        },
+        "required": [
+          "supplierName",
+          "invoiceNumber",
+          "invoiceDate",
+          "dueDate",
+          "currency",
+          "subtotal",
+          "taxAmount",
+          "totalAmount",
+          "purchaseOrderReference"
+        ],
+        "additionalProperties": false
+      },
       "InvoiceFieldsDto": {
         "type": "object",
         "properties": {
@@ -1708,6 +1761,15 @@
           "fields": {
             "$ref": "#/components/schemas/InvoiceFieldsDto"
           },
+          "fieldStatuses": {
+            "$ref": "#/components/schemas/InvoiceFieldStatusesDto"
+          },
+          "documentLanguage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "document": {
             "$ref": "#/components/schemas/InvoiceDocumentDto"
           },
@@ -1756,6 +1818,8 @@
           "id",
           "status",
           "fields",
+          "fieldStatuses",
+          "documentLanguage",
           "document",
           "duplicate",
           "uploadedBy",

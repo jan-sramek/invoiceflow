@@ -11,7 +11,10 @@ public abstract record ExtractionResult
     {
     }
 
-    public sealed record Succeeded(InvoiceFields Fields) : ExtractionResult;
+    public sealed record Succeeded(
+        InvoiceFields Fields,
+        InvoiceFieldStatuses Statuses,
+        string? DocumentLanguage = null) : ExtractionResult;
 
     /// <param name="Code">Stable catalogue code stored as the FailExtraction reason until failure columns exist.</param>
     public sealed record Failed(string Code) : ExtractionResult;

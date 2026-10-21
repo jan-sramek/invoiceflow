@@ -154,7 +154,8 @@ public class InvoiceProcessingServiceTests
         public Task<ExtractionResult> ExtractAsync(Stream pdf, CancellationToken cancellationToken)
         {
             Calls++;
-            return Task.FromResult<ExtractionResult>(new ExtractionResult.Succeeded(InvoiceFields.Empty));
+            return Task.FromResult<ExtractionResult>(
+                new ExtractionResult.Succeeded(InvoiceFields.Empty, InvoiceFieldStatuses.Empty));
         }
     }
 

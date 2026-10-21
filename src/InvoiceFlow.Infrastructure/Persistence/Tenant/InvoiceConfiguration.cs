@@ -35,6 +35,30 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             fields.Property(f => f.PurchaseOrderReference).HasColumnName("purchase_order_reference");
         });
 
+        builder.ComplexProperty(i => i.FieldStatuses, statuses =>
+        {
+            statuses.Property(s => s.SupplierName).HasConversion<string>().HasMaxLength(16)
+                .HasColumnName("supplier_name_status");
+            statuses.Property(s => s.InvoiceNumber).HasConversion<string>().HasMaxLength(16)
+                .HasColumnName("invoice_number_status");
+            statuses.Property(s => s.InvoiceDate).HasConversion<string>().HasMaxLength(16)
+                .HasColumnName("invoice_date_status");
+            statuses.Property(s => s.DueDate).HasConversion<string>().HasMaxLength(16)
+                .HasColumnName("due_date_status");
+            statuses.Property(s => s.Currency).HasConversion<string>().HasMaxLength(16)
+                .HasColumnName("currency_status");
+            statuses.Property(s => s.Subtotal).HasConversion<string>().HasMaxLength(16)
+                .HasColumnName("subtotal_status");
+            statuses.Property(s => s.TaxAmount).HasConversion<string>().HasMaxLength(16)
+                .HasColumnName("tax_amount_status");
+            statuses.Property(s => s.TotalAmount).HasConversion<string>().HasMaxLength(16)
+                .HasColumnName("total_amount_status");
+            statuses.Property(s => s.PurchaseOrderReference).HasConversion<string>().HasMaxLength(16)
+                .HasColumnName("purchase_order_reference_status");
+        });
+
+        builder.Property(i => i.DocumentLanguage).HasMaxLength(16);
+
         builder.OwnsOne(i => i.Document, document =>
         {
             document.ToTable("invoice_documents");

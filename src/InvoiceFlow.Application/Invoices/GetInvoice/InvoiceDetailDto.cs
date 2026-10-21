@@ -7,6 +7,8 @@ public sealed record InvoiceDetailDto(
     Guid Id,
     InvoiceStatus Status,
     InvoiceFieldsDto Fields,
+    InvoiceFieldStatusesDto FieldStatuses,
+    string? DocumentLanguage,
     InvoiceDocumentDto Document,
     InvoiceDuplicateDto? Duplicate,
     ActorDto UploadedBy,
@@ -39,5 +41,16 @@ public sealed record InvoiceFieldsDto(
     decimal? TaxAmount,
     decimal? TotalAmount,
     string? PurchaseOrderReference);
+
+public sealed record InvoiceFieldStatusesDto(
+    FieldStatus SupplierName,
+    FieldStatus InvoiceNumber,
+    FieldStatus InvoiceDate,
+    FieldStatus DueDate,
+    FieldStatus Currency,
+    FieldStatus Subtotal,
+    FieldStatus TaxAmount,
+    FieldStatus TotalAmount,
+    FieldStatus PurchaseOrderReference);
 
 public sealed record ActorDto(ActorType Type, string Id, string Name);

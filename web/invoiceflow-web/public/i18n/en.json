@@ -166,6 +166,12 @@
       "paidOn": "Paid on",
       "paymentReference": "Payment reference"
     },
+    "fieldStatus": {
+      "Missing": "Missing",
+      "Valid": "Looks good",
+      "Invalid": "Fails a validation rule — please correct",
+      "Unverified": "Not found in the document text — please confirm"
+    },
     "actions": {
       "approve": "Approve",
       "reject": "Reject",
@@ -223,6 +229,7 @@
       "duplicateHint": "An invoice with the same file already exists.",
       "viewOriginal": "View the original",
       "fieldsHeading": "Invoice details",
+      "language": "Document language",
       "readOnly": "These fields can no longer be edited in this status.",
       "unsaved": "Unsaved changes",
       "saveFirst": "Save your changes before submitting",

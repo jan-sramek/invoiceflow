@@ -59,11 +59,12 @@ internal sealed partial class InvoiceProcessingService(
         {
             case ExtractionResult.Succeeded succeeded:
                 invoice.RequireReview(WorkerActor, time.GetUtcNow());
-                if (succeeded.Fields != InvoiceFields.Empty)
-                {
-                    invoice.UpdateFields(WorkerActor, time.GetUtcNow(), succeeded.Fields);
-                }
-
+                invoice.ApplyExtraction(
+                    WorkerActor,
+                    time.GetUtcNow(),
+                    succeeded.Fields,
+                    succeeded.Statuses,
+                    succeeded.DocumentLanguage);
                 break;
             case ExtractionResult.Failed failed:
                 FailProcessing(invoice, failed.Code);

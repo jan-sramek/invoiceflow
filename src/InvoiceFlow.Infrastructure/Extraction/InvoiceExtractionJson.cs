@@ -68,6 +68,30 @@ internal static class InvoiceExtractionJson
         return text[start..(end + 1)];
     }
 
+    internal static string? TryLanguage(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        string json = ExtractJsonObject(text);
+        if (json.Length == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return TryGetString(document.RootElement, "documentLanguage", out string? language) ? language : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     private static T? TryCreate<T>(JsonElement root, string name, Func<string?, T> factory)
         where T : class
     {
