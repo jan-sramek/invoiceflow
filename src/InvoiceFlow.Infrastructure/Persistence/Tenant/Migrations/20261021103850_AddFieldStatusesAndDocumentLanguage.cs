@@ -21,8 +21,8 @@ namespace InvoiceFlow.Infrastructure.Persistence.Tenant.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "document_language",
                 table: "invoices",
-                type: "character varying(16)",
-                maxLength: 16,
+                type: "character varying(32)",
+                maxLength: 32,
                 nullable: true);
 
             migrationBuilder.AddColumn<string>(

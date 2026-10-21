@@ -32,47 +32,6 @@ internal static class ExtractedFieldAssessor
         };
     }
 
-    /// <summary>
-    /// Rough document language for grounding hints and the invoice detail chip.
-    /// </summary>
-    public static string DetectLanguage(string documentText, string? modelLanguage)
-    {
-        string? normalized = modelLanguage?.Trim().ToLowerInvariant();
-        if (normalized is "en" or "cs" or "de" or "other")
-        {
-            return normalized;
-        }
-
-        if (normalized is "english")
-        {
-            return "en";
-        }
-
-        if (normalized is "czech" or "cze")
-        {
-            return "cs";
-        }
-
-        if (normalized is "german" or "deu" or "ger")
-        {
-            return "de";
-        }
-
-        int czech = CountAny(documentText, "ěščřžýáíéůúďťň");
-        int german = CountAny(documentText, "äöüß");
-        if (czech >= 3 && czech >= german)
-        {
-            return "cs";
-        }
-
-        if (german >= 2 && german > czech)
-        {
-            return "de";
-        }
-
-        return "en";
-    }
-
     private static FieldStatus StatusOf(
         string? display,
         InvoiceField field,
@@ -163,17 +122,4 @@ internal static class ExtractedFieldAssessor
     private static string? Format(decimal? amount) =>
         amount?.ToString("0.00", CultureInfo.InvariantCulture);
 
-    private static int CountAny(string text, string chars)
-    {
-        int count = 0;
-        foreach (char c in text)
-        {
-            if (chars.Contains(c, StringComparison.Ordinal))
-            {
-                count++;
-            }
-        }
-
-        return count;
-    }
 }

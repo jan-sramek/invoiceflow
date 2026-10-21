@@ -95,7 +95,7 @@ public sealed class Invoice : AggregateRoot
     public InvoiceFieldStatuses FieldStatuses { get; private set; } = InvoiceFieldStatuses.Empty;
 
     /// <summary>
-    /// Document language detected during extraction (<c>en</c>, <c>cs</c>, <c>de</c>, or <c>other</c>).
+    /// Document language from extraction as a BCP 47 / ISO 639 tag (any language), when known.
     /// </summary>
     public string? DocumentLanguage { get; private set; }
 
@@ -201,23 +201,13 @@ public sealed class Invoice : AggregateRoot
         IReadOnlyList<FieldChange> changes = fields.ChangesFrom(Fields);
         Fields = fields;
         FieldStatuses = statuses;
-        DocumentLanguage = NormalizeLanguage(documentLanguage);
+        DocumentLanguage = Invoices.DocumentLanguage.Normalize(documentLanguage);
 
         if (changes.Count > 0)
         {
             Raise(new InvoiceFieldsCorrected(Id, actor, now, changes));
         }
     }
-
-    private static string? NormalizeLanguage(string? language) =>
-        language?.Trim().ToLowerInvariant() switch
-        {
-            "en" or "english" => "en",
-            "cs" or "czech" or "cze" => "cs",
-            "de" or "german" or "deu" or "ger" => "de",
-            null or "" => null,
-            _ => "other",
-        };
 
     public IReadOnlyList<FieldIssue> CheckReadiness(DateTimeOffset now) => Fields.FindIssues(LatestToday(now));
 

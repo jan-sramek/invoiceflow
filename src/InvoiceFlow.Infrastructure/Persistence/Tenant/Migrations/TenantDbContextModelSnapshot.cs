@@ -122,8 +122,8 @@ namespace InvoiceFlow.Infrastructure.Persistence.Tenant.Migrations
                         .HasColumnName("id");
 
                     b.Property<string>("DocumentLanguage")
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
                         .HasColumnName("document_language");
 
                     b.Property<Guid?>("DuplicateOfInvoiceId")

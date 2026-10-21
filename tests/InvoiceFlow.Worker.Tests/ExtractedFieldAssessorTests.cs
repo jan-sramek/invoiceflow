@@ -69,9 +69,4 @@ public class ExtractedFieldAssessorTests
         statuses.TotalAmount.ShouldBe(FieldStatus.Invalid);
     }
 
-    [Fact]
-    public void DetectLanguage_CzechDiacritics_ReturnsCs()
-    {
-        ExtractedFieldAssessor.DetectLanguage("Faktura číslo dodavatel částka Kč", null).ShouldBe("cs");
-    }
 }

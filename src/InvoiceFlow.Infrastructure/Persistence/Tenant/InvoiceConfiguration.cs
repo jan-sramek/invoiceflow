@@ -57,7 +57,7 @@ internal sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
                 .HasColumnName("purchase_order_reference_status");
         });
 
-        builder.Property(i => i.DocumentLanguage).HasMaxLength(16);
+        builder.Property(i => i.DocumentLanguage).HasMaxLength(DocumentLanguage.MaxLength);
 
         builder.OwnsOne(i => i.Document, document =>
         {
