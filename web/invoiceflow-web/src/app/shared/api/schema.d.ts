@@ -322,6 +322,8 @@ export interface components {
             id: string;
             status: components["schemas"]["InvoiceStatus"];
             fields: components["schemas"]["InvoiceFieldsDto"];
+            fieldStatuses: components["schemas"]["InvoiceFieldStatusesDto"];
+            documentLanguage: string | null;
             document: components["schemas"]["InvoiceDocumentDto"];
             duplicate: components["schemas"]["InvoiceDuplicateDto"] | null;
             uploadedBy: components["schemas"]["ActorDto"];
