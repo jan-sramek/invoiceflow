@@ -258,6 +258,19 @@ export interface components {
             id: string;
             name: string;
         };
+        /** @enum {string} */
+        FieldStatus: "Missing" | "Valid" | "Invalid" | "Unverified";
+        InvoiceFieldStatusesDto: {
+            supplierName: components["schemas"]["FieldStatus"];
+            invoiceNumber: components["schemas"]["FieldStatus"];
+            invoiceDate: components["schemas"]["FieldStatus"];
+            dueDate: components["schemas"]["FieldStatus"];
+            currency: components["schemas"]["FieldStatus"];
+            subtotal: components["schemas"]["FieldStatus"];
+            taxAmount: components["schemas"]["FieldStatus"];
+            totalAmount: components["schemas"]["FieldStatus"];
+            purchaseOrderReference: components["schemas"]["FieldStatus"];
+        };
         InvoiceFieldsDto: {
             supplierName: string | null;
             invoiceNumber: string | null;
@@ -309,6 +322,8 @@ export interface components {
             id: string;
             status: components["schemas"]["InvoiceStatus"];
             fields: components["schemas"]["InvoiceFieldsDto"];
+            fieldStatuses: components["schemas"]["InvoiceFieldStatusesDto"];
+            documentLanguage: string | null;
             document: components["schemas"]["InvoiceDocumentDto"];
             duplicate: components["schemas"]["InvoiceDuplicateDto"] | null;
             uploadedBy: components["schemas"]["ActorDto"];

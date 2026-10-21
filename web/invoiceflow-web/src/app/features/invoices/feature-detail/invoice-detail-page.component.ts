@@ -11,7 +11,7 @@ import { RouterLink } from '@angular/router';
 import { ApiErrorMessages } from '@core/error-handling';
 import { LanguageService } from '@core/i18n';
 import { TranslocoPipe } from '@jsverse/transloco';
-import type { InvoiceFieldsDto, InvoiceFieldsInput } from '@shared/api';
+import type { FieldStatus, InvoiceFieldsDto, InvoiceFieldsInput } from '@shared/api';
 import {
   BytesPipe,
   DatePipe,
@@ -91,6 +91,15 @@ export class InvoiceDetailPageComponent {
     return error ? this.errorMessages.message(error) : '';
   });
   protected readonly notFound = computed(() => this.store.loadError()?.status === 404);
+
+  protected fieldStatus(field: keyof InvoiceFieldsDto): FieldStatus | null {
+    const statuses = this.store.invoice()?.fieldStatuses;
+    return statuses ? statuses[field] : null;
+  }
+
+  protected showFieldStatus(status: FieldStatus | null): boolean {
+    return status === 'Invalid' || status === 'Unverified';
+  }
 
   constructor() {
     this.store.load(this.id);

@@ -60,6 +60,6 @@ public class InvoiceExtractionJsonTests
     {
         await using var pdf = new MemoryStream("%PDF"u8.ToArray());
         ExtractionResult result = await new StubInvoiceExtractor().ExtractAsync(pdf, TestContext.Current.CancellationToken);
-        result.ShouldBe(new ExtractionResult.Succeeded(InvoiceFields.Empty));
+        result.ShouldBe(new ExtractionResult.Succeeded(InvoiceFields.Empty, InvoiceFieldStatuses.Empty));
     }
 }

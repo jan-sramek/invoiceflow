@@ -166,6 +166,12 @@
       "paidOn": "Zaplaceno dne",
       "paymentReference": "Reference platby"
     },
+    "fieldStatus": {
+      "Missing": "Chybí",
+      "Valid": "V pořádku",
+      "Invalid": "Nesplňuje pravidlo — opravte hodnotu",
+      "Unverified": "Nenalezeno v textu dokumentu — potvrďte"
+    },
     "actions": {
       "approve": "Schválit",
       "reject": "Zamítnout",
@@ -223,6 +229,7 @@
       "duplicateHint": "Faktura se stejným souborem již existuje.",
       "viewOriginal": "Zobrazit původní",
       "fieldsHeading": "Údaje faktury",
+      "language": "Jazyk dokumentu",
       "readOnly": "V tomto stavu už nelze pole upravovat.",
       "unsaved": "Neuložené změny",
       "saveFirst": "Před odesláním uložte změny",

@@ -89,6 +89,16 @@ public sealed class Invoice : AggregateRoot
 
     public InvoiceFields Fields { get; private set; } = InvoiceFields.Empty;
 
+    /// <summary>
+    /// Per-field Valid / Missing / Invalid / Unverified after extraction or human edit.
+    /// </summary>
+    public InvoiceFieldStatuses FieldStatuses { get; private set; } = InvoiceFieldStatuses.Empty;
+
+    /// <summary>
+    /// Document language from extraction as a BCP 47 / ISO 639 tag (any language), when known.
+    /// </summary>
+    public string? DocumentLanguage { get; private set; }
+
     public Actor? SubmittedBy { get; private set; }
 
     public DateOnly? PaidOn { get; private set; }
@@ -168,8 +178,35 @@ public sealed class Invoice : AggregateRoot
             return;
         }
 
+        FieldStatuses = FieldStatuses.AfterHumanEdits(Fields, fields);
         Fields = fields;
         Raise(new InvoiceFieldsCorrected(Id, actor, now, changes));
+    }
+
+    /// <summary>
+    /// Applies extractor output after the invoice has moved to review. Does not change status.
+    /// </summary>
+    public void ApplyExtraction(
+        Actor actor,
+        DateTimeOffset now,
+        InvoiceFields fields,
+        InvoiceFieldStatuses statuses,
+        string? documentLanguage)
+    {
+        if (Status is not (InvoiceStatus.NeedsReview or InvoiceStatus.Extracted))
+        {
+            throw new InvalidTransitionException(Status, InvoiceAction.UpdateFields);
+        }
+
+        IReadOnlyList<FieldChange> changes = fields.ChangesFrom(Fields);
+        Fields = fields;
+        FieldStatuses = statuses;
+        DocumentLanguage = Invoices.DocumentLanguage.Normalize(documentLanguage);
+
+        if (changes.Count > 0)
+        {
+            Raise(new InvoiceFieldsCorrected(Id, actor, now, changes));
+        }
     }
 
     public IReadOnlyList<FieldIssue> CheckReadiness(DateTimeOffset now) => Fields.FindIssues(LatestToday(now));

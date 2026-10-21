@@ -121,6 +121,11 @@ namespace InvoiceFlow.Infrastructure.Persistence.Tenant.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("DocumentLanguage")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("document_language");
+
                     b.Property<Guid?>("DuplicateOfInvoiceId")
                         .HasColumnType("uuid")
                         .HasColumnName("duplicate_of_invoice_id");
@@ -164,6 +169,65 @@ namespace InvoiceFlow.Infrastructure.Persistence.Tenant.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "FieldStatuses", "InvoiceFlow.Domain.Invoices.Invoice.FieldStatuses#InvoiceFieldStatuses", b1 =>
+                        {
+                            b1.IsRequired();
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(16)
+                                .HasColumnType("character varying(16)")
+                                .HasColumnName("currency_status");
+
+                            b1.Property<string>("DueDate")
+                                .IsRequired()
+                                .HasMaxLength(16)
+                                .HasColumnType("character varying(16)")
+                                .HasColumnName("due_date_status");
+
+                            b1.Property<string>("InvoiceDate")
+                                .IsRequired()
+                                .HasMaxLength(16)
+                                .HasColumnType("character varying(16)")
+                                .HasColumnName("invoice_date_status");
+
+                            b1.Property<string>("InvoiceNumber")
+                                .IsRequired()
+                                .HasMaxLength(16)
+                                .HasColumnType("character varying(16)")
+                                .HasColumnName("invoice_number_status");
+
+                            b1.Property<string>("PurchaseOrderReference")
+                                .IsRequired()
+                                .HasMaxLength(16)
+                                .HasColumnType("character varying(16)")
+                                .HasColumnName("purchase_order_reference_status");
+
+                            b1.Property<string>("Subtotal")
+                                .IsRequired()
+                                .HasMaxLength(16)
+                                .HasColumnType("character varying(16)")
+                                .HasColumnName("subtotal_status");
+
+                            b1.Property<string>("SupplierName")
+                                .IsRequired()
+                                .HasMaxLength(16)
+                                .HasColumnType("character varying(16)")
+                                .HasColumnName("supplier_name_status");
+
+                            b1.Property<string>("TaxAmount")
+                                .IsRequired()
+                                .HasMaxLength(16)
+                                .HasColumnType("character varying(16)")
+                                .HasColumnName("tax_amount_status");
+
+                            b1.Property<string>("TotalAmount")
+                                .IsRequired()
+                                .HasMaxLength(16)
+                                .HasColumnType("character varying(16)")
+                                .HasColumnName("total_amount_status");
+                        });
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Fields", "InvoiceFlow.Domain.Invoices.Invoice.Fields#InvoiceFields", b1 =>
                         {

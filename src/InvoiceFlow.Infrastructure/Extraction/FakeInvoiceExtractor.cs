@@ -33,6 +33,6 @@ internal sealed class FakeInvoiceExtractor(IOptions<FakeExtractorOptions> option
             throw new HttpRequestException("Simulated technical extraction failure.");
         }
 
-        return new ExtractionResult.Succeeded(InvoiceFields.Empty);
+        return new ExtractionResult.Succeeded(InvoiceFields.Empty, InvoiceFieldStatuses.Empty);
     }
 }
