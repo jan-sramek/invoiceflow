@@ -16,6 +16,8 @@ export default defineConfig({
     baseURL,
     // The app picks its language from the browser; the tests read English texts.
     locale: 'en-GB',
+    // Keycloak uses a local mkcert CA; Chromium does not trust it in CI without ignoreHTTPSErrors.
+    ignoreHTTPSErrors: !!process.env['CI'],
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

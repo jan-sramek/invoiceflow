@@ -120,3 +120,68 @@ jobs:
           --file ${{ matrix.dockerfile }}
           --build-arg SOURCE_REVISION=${{ github.sha }}
           ${{ matrix.context }}
+
+  e2e:
+    name: Playwright e2e (k3d)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: "true"
+      KUBECONFIG: ${{ github.workspace }}/.kube/config
+      INVOICEFLOW_BACKUP_DIR: ${{ github.workspace }}/.local/share/invoiceflow/backups
+      IMAGE_TAG: ${{ github.sha }}
+      # Fake extractor — no Ollama in CI
+      DOCUMENT_EXTRACTION_SERVICE_URL: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install cluster tools
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/kubectl "https://dl.k8s.io/release/v1.35.5/bin/linux/amd64/kubectl"
+          sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+          curl -fsSL "https://raw.githubusercontent.com/helm/helm/v3.19.0/scripts/get-helm-3" | bash
+          curl -fsSL "https://raw.githubusercontent.com/k3d-io/k3d/v5.9.0/install.sh" | TAG=v5.9.0 bash
+          kubectl version --client
+          k3d version
+          helm version
+
+      - name: Map *.localhost to loopback
+        run: |
+          echo "127.0.0.1 invoiceflow.localhost auth.invoiceflow.localhost" | sudo tee -a /etc/hosts
+
+      - name: Allow HTTP pushes to the k3d registry
+        run: |
+          set -euo pipefail
+          if [[ -f /etc/docker/daemon.json ]]; then
+            sudo jq '. + {"insecure-registries": ((.["insecure-registries"] // []) + ["localhost:5001", "127.0.0.1:5001"] | unique)}' \
+              /etc/docker/daemon.json | sudo tee /etc/docker/daemon.json.tmp >/dev/null
+            sudo mv /etc/docker/daemon.json.tmp /etc/docker/daemon.json
+          else
+            echo '{"insecure-registries":["localhost:5001","127.0.0.1:5001"]}' | sudo tee /etc/docker/daemon.json >/dev/null
+          fi
+          sudo systemctl restart docker
+          docker info | grep -A5 'Insecure Registries'
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Create k3d cluster, deploy stack, run smoke
+        run: make e2e-ci
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-report
+          path: |
+            tests/e2e/playwright-report
+            tests/e2e/test-results
+          if-no-files-found: ignore

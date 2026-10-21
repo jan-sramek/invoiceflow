@@ -81,8 +81,9 @@ spec:
                 secretKeyRef:
                   name: rabbitmq-worker
                   key: password
+            # make app-up fills in the URL; empty → FakeInvoiceExtractor (CI / drills)
             - name: DocumentExtraction__ServiceUrl
-              value: http://ollama.invoiceflow.svc.cluster.local:11434
+              value: "${DOCUMENT_EXTRACTION_SERVICE_URL}"
             - name: DocumentExtraction__Model
               value: qwen3:0.6b
             # Present after make onprem-spike / provision-tenant; optional so stack-up works without on-prem.
