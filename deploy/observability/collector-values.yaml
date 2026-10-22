@@ -20,6 +20,15 @@ config:
   exporters:
     otlphttp/loki:
       endpoint: http://loki.invoiceflow-observability.svc.cluster.local:3100/otlp
+    otlp/tempo:
+      endpoint: tempo.invoiceflow-observability.svc.cluster.local:4317
+      tls:
+        insecure: true
+    prometheusremotewrite:
+      endpoint: http://prometheus-server.invoiceflow-observability.svc.cluster.local:9090/api/v1/write
+      tls:
+        insecure: true
+    # Legacy mirror for dashboard.invoiceflow.localhost; Grafana uses Tempo + Prometheus.
     otlp/aspire:
       endpoint: aspire-dashboard.invoiceflow-observability.svc.cluster.local:18889
       tls:
@@ -33,11 +42,13 @@ config:
         receivers:
           - otlp
         exporters:
+          - prometheusremotewrite
           - otlp/aspire
       traces:
         receivers:
           - otlp
         exporters:
+          - otlp/tempo
           - otlp/aspire
 
 ports:
