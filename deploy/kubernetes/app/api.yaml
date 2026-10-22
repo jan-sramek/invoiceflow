@@ -18,6 +18,10 @@ spec:
         app.kubernetes.io/part-of: invoiceflow
     spec:
       automountServiceAccountToken: false
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "2"
       securityContext:
         runAsNonRoot: true
         runAsUser: 1654
@@ -50,15 +54,16 @@ spec:
                 secretKeyRef:
                   name: catalog-app
                   key: password
+            # Trailing dot: absolute FQDN so Java does not append search domains (ndots).
             - name: ConnectionStrings__Catalog
-              value: Host=postgres.invoiceflow-infra.svc.cluster.local;Database=invoiceflow_catalog;Username=catalog_app;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
+              value: Host=postgres.invoiceflow-infra.svc.cluster.local.;Database=invoiceflow_catalog;Username=catalog_app;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
             # Escape hatch for jobs without a user token; access tokens carry tenant_id
             - name: Tenancy__DevelopmentTenantId
               value: "${DEVELOPMENT_TENANT_ID}"
             - name: Authentication__DevelopmentUsers
               value: "false"
             - name: Authentication__Authority
-              value: http://keycloak.invoiceflow-infra.svc.cluster.local:8080/realms/invoiceflow
+              value: http://keycloak.invoiceflow-infra.svc.cluster.local.:8080/realms/invoiceflow
             - name: Authentication__ValidIssuer
               value: https://auth.invoiceflow.localhost:8080/realms/invoiceflow
             - name: Authentication__Audience
@@ -66,7 +71,7 @@ spec:
             - name: Authentication__RequireHttpsMetadata
               value: "false"
             - name: DocumentStorage__ServiceUrl
-              value: http://seaweedfs.invoiceflow-infra.svc.cluster.local:8333
+              value: http://seaweedfs.invoiceflow-infra.svc.cluster.local.:8333
             - name: DocumentStorage__Bucket
               value: invoiceflow-documents
             - name: DocumentStorage__AccessKey
@@ -80,7 +85,7 @@ spec:
                   name: document-storage
                   key: secret-key
             - name: RabbitMq__Host
-              value: rabbitmq.invoiceflow-infra.svc.cluster.local
+              value: rabbitmq.invoiceflow-infra.svc.cluster.local.
             - name: RabbitMq__VirtualHost
               value: invoiceflow
             - name: RabbitMq__UserName

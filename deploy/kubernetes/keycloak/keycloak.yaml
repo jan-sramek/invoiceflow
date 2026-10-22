@@ -17,6 +17,11 @@ spec:
         app.kubernetes.io/name: keycloak
     spec:
       automountServiceAccountToken: false
+      # Java treats names with <5 dots as relative (ndots:5); prefer short in-namespace DNS.
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "2"
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -33,8 +38,9 @@ spec:
             - --optimized
             - --import-realm
           env:
+            # Same namespace as the postgres Service — short name avoids Java FQDN/ndots failures.
             - name: KC_DB_URL
-              value: jdbc:postgresql://postgres.invoiceflow-infra.svc.cluster.local:5432/keycloak
+              value: jdbc:postgresql://postgres:5432/keycloak
             - name: KC_DB_USERNAME
               value: keycloak
             - name: KC_DB_PASSWORD
@@ -62,6 +68,8 @@ spec:
               value: json
             - name: JAVA_OPTS_KC_HEAP
               value: -XX:MaxRAMPercentage=50 -XX:InitialRAMPercentage=25
+            - name: JAVA_OPTS_APPEND
+              value: -Djava.net.preferIPv4Stack=true
             # Temporary admin, created only while the master realm has no admin yet
             - name: KC_BOOTSTRAP_ADMIN_USERNAME
               value: admin

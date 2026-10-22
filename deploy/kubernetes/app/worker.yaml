@@ -20,6 +20,10 @@ spec:
       # ≥ worker HostOptions.ShutdownTimeout / Ollama HTTP timeout so SIGTERM can drain in-flight work.
       terminationGracePeriodSeconds: 180
       automountServiceAccountToken: false
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "2"
       securityContext:
         runAsNonRoot: true
         runAsUser: 1654
@@ -51,13 +55,14 @@ spec:
                 secretKeyRef:
                   name: catalog-app
                   key: password
+            # Trailing dot: absolute FQDN so Java does not append search domains (ndots).
             - name: ConnectionStrings__Catalog
-              value: Host=postgres.invoiceflow-infra.svc.cluster.local;Database=invoiceflow_catalog;Username=catalog_app;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
+              value: Host=postgres.invoiceflow-infra.svc.cluster.local.;Database=invoiceflow_catalog;Username=catalog_app;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
             # Fallback when no message is being processed (health / startup)
             - name: Tenancy__DevelopmentTenantId
               value: "${DEVELOPMENT_TENANT_ID}"
             - name: DocumentStorage__ServiceUrl
-              value: http://seaweedfs.invoiceflow-infra.svc.cluster.local:8333
+              value: http://seaweedfs.invoiceflow-infra.svc.cluster.local.:8333
             - name: DocumentStorage__Bucket
               value: invoiceflow-documents
             - name: DocumentStorage__AccessKey
@@ -71,7 +76,7 @@ spec:
                   name: document-storage
                   key: secret-key
             - name: RabbitMq__Host
-              value: rabbitmq.invoiceflow-infra.svc.cluster.local
+              value: rabbitmq.invoiceflow-infra.svc.cluster.local.
             - name: RabbitMq__VirtualHost
               value: invoiceflow
             - name: RabbitMq__UserName
