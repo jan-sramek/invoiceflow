@@ -14,7 +14,7 @@ pod="$("${app[@]}" get pod -l app.kubernetes.io/name=keycloak -o jsonpath='{.ite
 # Pod root is read-only; point kcadm's config file at the writable /tmp emptyDir.
 kcadm() {
   "${app[@]}" exec -i "$pod" -- \
-    /opt/keycloak/bin/kcadm.sh "$@" --config /tmp/kcadm.config
+    /opt/keycloak/bin/kcadm.sh --config /tmp/kcadm.config "$@"
 }
 
 # Authenticate against the master realm on the local loopback inside the pod
