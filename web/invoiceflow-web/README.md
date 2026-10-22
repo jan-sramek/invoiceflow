@@ -19,7 +19,7 @@ Angular app for InvoiceFlow (Stage 1: list, detail, upload, edit, lifecycle).
 | `npm run build` | Production build |
 | `npm test` / `npm run test:ci` | Unit tests (watch / headless once) |
 | `npm run lint` | ESLint + Sheriff module boundaries |
-| `npm run i18n:check` | English and Czech translation keys must match |
+| `npm run i18n:check` | English, Czech and German translation keys must match |
 | `npm run api:generate` | Regenerate `src/app/shared/api/schema.d.ts` from `openapi/openapi.json` |
 
 ## Structure

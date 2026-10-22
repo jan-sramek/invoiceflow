@@ -14,7 +14,7 @@ class InlineLoader implements TranslocoLoader {
         name: 'InvoiceFlow',
         nav: { label: 'Main navigation', invoices: 'Invoices', upload: 'Upload' },
         devUser: { label: 'Acting as', hint: 'hint', clerk: 'Clara Clerk', approver: 'Adam Approver', finance: 'Fiona Finance' },
-        language: { label: 'Language', en: 'English', cs: 'Čeština' },
+        language: { label: 'Language', en: 'English', cs: 'Čeština', de: 'Deutsch' },
         skipToContent: 'Skip to content',
       },
     } satisfies Translation);
@@ -32,7 +32,7 @@ describe('App', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideTransloco({
-          config: { availableLangs: ['en', 'cs'], defaultLang: 'en', prodMode: true },
+          config: { availableLangs: ['en', 'cs', 'de'], defaultLang: 'en', prodMode: true },
           loader: InlineLoader,
         }),
       ],
@@ -58,7 +58,7 @@ describe('App', () => {
     const languages = Array.from(root.querySelectorAll('header if-language-switcher button')).map((b) =>
       b.textContent?.trim(),
     );
-    expect(languages).toEqual(['EN', 'CS']);
+    expect(languages).toEqual(['EN', 'CS', 'DE']);
   });
 
   it('provides the routed page inside the main landmark', async () => {

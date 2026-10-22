@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { Language, LanguageService } from '../i18n';
 
-/** EN | CS toggle, shown in the header so the language can be changed from the first screen. */
+/** EN | CS | DE toggle, shown in the header so the language can be changed from the first screen. */
 @Component({
   selector: 'if-language-switcher',
   changeDetection: ChangeDetectionStrategy.OnPush,

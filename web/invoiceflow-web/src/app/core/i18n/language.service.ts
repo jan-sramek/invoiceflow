@@ -4,12 +4,12 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 
-export const LANGUAGES = ['en', 'cs'] as const;
+export const LANGUAGES = ['en', 'cs', 'de'] as const;
 export type Language = (typeof LANGUAGES)[number];
 export const DEFAULT_LANGUAGE: Language = 'en';
 
 const STORAGE_KEY = 'invoiceflow.lang';
-const LOCALES: Record<Language, string> = { en: 'en-GB', cs: 'cs-CZ' };
+const LOCALES: Record<Language, string> = { en: 'en-GB', cs: 'cs-CZ', de: 'de-DE' };
 
 export function isLanguage(value: unknown): value is Language {
   return typeof value === 'string' && (LANGUAGES as readonly string[]).includes(value);

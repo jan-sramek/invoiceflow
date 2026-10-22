@@ -1,0 +1,322 @@
+{
+  "app": {
+    "name": "InvoiceFlow",
+    "skipToContent": "Zum Inhalt springen",
+    "nav": {
+      "label": "Hauptnavigation",
+      "invoices": "Rechnungen",
+      "upload": "Hochladen"
+    },
+    "auth": {
+      "signIn": "Anmelden",
+      "signOut": "Abmelden"
+    },
+    "devUser": {
+      "label": "Angemeldet als",
+      "hint": "Entwicklungsanmeldung: wird als X-Development-User-Header gesendet",
+      "clerk": "Clara Clerk",
+      "approver": "Adam Approver",
+      "finance": "Fiona Finance"
+    },
+    "language": {
+      "label": "Sprache",
+      "en": "English",
+      "cs": "Čeština",
+      "de": "Deutsch"
+    },
+    "common": {
+      "cancel": "Abbrechen",
+      "close": "Schließen",
+      "loading": "Wird geladen…",
+      "retry": "Erneut versuchen",
+      "save": "Speichern"
+    },
+    "paginator": {
+      "itemsPerPage": "Zeilen pro Seite",
+      "next": "Nächste Seite",
+      "previous": "Vorherige Seite",
+      "first": "Erste Seite",
+      "last": "Letzte Seite",
+      "range": "{{ start }}–{{ end }} von {{ total }}"
+    },
+    "notFound": {
+      "title": "Seite nicht gefunden",
+      "hint": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
+      "action": "Zu den Rechnungen"
+    }
+  },
+  "errors": {
+    "traceId": "Trace-ID",
+    "copyTraceId": "Trace-ID kopieren",
+    "traceCopied": "Kopiert",
+    "stale": {
+      "title": "Die Rechnung hat sich geändert",
+      "message": "Jemand anderes hat diese Rechnung geändert, nachdem Sie sie geöffnet haben. Laden Sie neu, um die aktuelle Version zu sehen; nicht gespeicherte Änderungen gehen verloren.",
+      "reload": "Rechnung neu laden",
+      "keep": "Weiter bearbeiten"
+    },
+    "client": {
+      "network": "Der Server ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+      "timeout": "Der Server hat zu lange nicht geantwortet. Versuchen Sie es erneut.",
+      "canceled": "Die Anfrage wurde abgebrochen.",
+      "unknown": "Etwas ist schiefgelaufen. Versuchen Sie es erneut und melden Sie die Trace-ID, wenn es weiterhin auftritt."
+    },
+    "http": {
+      "401": "Sie sind nicht angemeldet.",
+      "403": "Dazu sind Sie nicht berechtigt.",
+      "404": "Das konnte nicht gefunden werden.",
+      "502": "Der Dienst ist vorübergehend nicht verfügbar. Versuchen Sie es gleich erneut.",
+      "503": "Der Dienst ist vorübergehend nicht verfügbar. Versuchen Sie es gleich erneut.",
+      "504": "Der Dienst hat zu lange nicht geantwortet. Versuchen Sie es gleich erneut.",
+      "4xx": "Die Anfrage wurde abgelehnt. Prüfen Sie Ihre Eingabe und versuchen Sie es erneut.",
+      "5xx": "Der Server hatte ein Problem. Versuchen Sie es erneut und melden Sie die Trace-ID, wenn es weiterhin auftritt."
+    },
+    "request": {
+      "malformed": "Die Anfrage konnte nicht gelesen werden.",
+      "invalid": "Die Anfrage wurde abgelehnt.",
+      "not_found": "Das konnte nicht gefunden werden.",
+      "method_not_allowed": "Diese Aktion ist nicht verfügbar.",
+      "unsupported_media_type": "Das Anfrageformat wird nicht unterstützt."
+    },
+    "validation": {
+      "failed": "Einige Werte sind ungültig. Korrigieren Sie die markierten Felder und versuchen Sie es erneut.",
+      "invalid_format": "Dieser Wert hat das falsche Format.",
+      "unknown_property": "Dieses Feld wird nicht erkannt.",
+      "required": "Dieses Feld ist erforderlich.",
+      "max_length": "Verwenden Sie höchstens {{ max }} Zeichen.",
+      "out_of_range": "Geben Sie einen Wert zwischen {{ min }} und {{ max }} ein.",
+      "range_reversed": "Dies darf nicht vor {{ from }} liegen.",
+      "not_allowed": "Wählen Sie eines von: {{ allowed }}.",
+      "currency_invalid": "Verwenden Sie einen dreistelligen Währungscode wie EUR.",
+      "amount_precision": "Verwenden Sie höchstens {{ maxDecimals }} Dezimalstellen.",
+      "amount_out_of_range": "Der Betrag ist zu groß; das Maximum ist {{ max }}.",
+      "must_be_positive": "Geben Sie einen Betrag größer als null ein.",
+      "total_mismatch": "Die Summe muss dem Nettobetrag plus MwSt. entsprechen.",
+      "date_in_future": "Das Datum darf nicht in der Zukunft liegen.",
+      "due_date_before_invoice_date": "Das Fälligkeitsdatum darf nicht vor dem Rechnungsdatum liegen."
+    },
+    "invoice": {
+      "not_found": "Diese Rechnung existiert nicht oder Sie haben keinen Zugriff darauf.",
+      "invalid_transition": "Diese Rechnung ist {{ from }}, daher ist „{{ action }}“ nicht möglich. Laden Sie neu und wählen Sie eine verfügbare Aktion.",
+      "not_ready_for_submission": "Vervollständigen Sie die markierten Felder vor dem Einreichen.",
+      "payment_date_in_future": "Geben Sie das Datum ein, an dem die Zahlung tatsächlich erfolgt ist.",
+      "unresolved_duplicate": "Diese Rechnung könnte ein Duplikat sein. Bestätigen Sie, dass sie keines ist, oder stornieren Sie sie."
+    },
+    "approval": {
+      "own_invoice": "Sie können eine von Ihnen eingereichte Rechnung nicht genehmigen oder ablehnen. Bitten Sie einen anderen Genehmiger."
+    },
+    "upload": {
+      "too_large": "Die Datei ist größer als das Maximum von {{ maxSize }}.",
+      "not_pdf": "Nur PDF-Dateien werden akzeptiert."
+    },
+    "idempotency": {
+      "key_required": "Der Upload konnte nicht identifiziert werden. Versuchen Sie es erneut.",
+      "in_progress": "Dieser Upload wird noch verarbeitet. Versuchen Sie es gleich erneut.",
+      "key_reused": "Dieser Upload konnte keiner Datei zugeordnet werden. Versuchen Sie es erneut."
+    },
+    "auth": {
+      "user_required": "Sie sind nicht angemeldet. Wählen Sie einen Benutzer in der Kopfzeile."
+    },
+    "concurrency": {
+      "if_match_required": "Die Rechnungsversion fehlt. Laden Sie neu und versuchen Sie es erneut.",
+      "stale_version": "Jemand hat diese Rechnung geändert, nachdem Sie sie geöffnet haben. Laden Sie neu und versuchen Sie es erneut."
+    },
+    "tenant": {
+      "unavailable": "Die Daten Ihrer Organisation sind vorübergehend nicht verfügbar. Versuchen Sie es gleich erneut.",
+      "maintenance": "Der Datenspeicher Ihrer Organisation wird gewartet. Versuchen Sie es gleich erneut."
+    },
+    "storage": {
+      "unavailable": "Der Dokumentenspeicher ist vorübergehend nicht verfügbar. Versuchen Sie es gleich erneut."
+    },
+    "server": {
+      "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Melden Sie ihn mit der Trace-ID."
+    }
+  },
+  "invoices": {
+    "status": {
+      "Uploaded": "Hochgeladen",
+      "Processing": "In Bearbeitung",
+      "Extracted": "Extrahiert",
+      "NeedsReview": "Prüfung nötig",
+      "ExtractionFailed": "Extraktion fehlgeschlagen",
+      "PendingApproval": "Genehmigung ausstehend",
+      "Approved": "Genehmigt",
+      "Rejected": "Abgelehnt",
+      "Paid": "Bezahlt",
+      "Cancelled": "Storniert"
+    },
+    "duplicate": {
+      "None": "Kein Duplikat",
+      "Suspected": "Mögliches Duplikat",
+      "Cleared": "Als kein Duplikat bestätigt"
+    },
+    "flags": {
+      "overdue": "Überfällig"
+    },
+    "fields": {
+      "supplierName": "Lieferant",
+      "invoiceNumber": "Rechnungsnummer",
+      "invoiceDate": "Rechnungsdatum",
+      "dueDate": "Fälligkeitsdatum",
+      "currency": "Währung",
+      "subtotal": "Nettobetrag",
+      "taxAmount": "MwSt.",
+      "totalAmount": "Summe",
+      "purchaseOrderReference": "Bestellreferenz",
+      "status": "Status",
+      "paidOn": "Bezahlt am",
+      "paymentReference": "Zahlungsreferenz"
+    },
+    "fieldStatus": {
+      "Missing": "Fehlt",
+      "Valid": "Sieht gut aus",
+      "Invalid": "Verstößt gegen eine Validierungsregel — bitte korrigieren",
+      "Unverified": "Nicht im Dokumententext gefunden — bitte bestätigen"
+    },
+    "actions": {
+      "approve": "Genehmigen",
+      "reject": "Ablehnen",
+      "submit": "Zur Genehmigung einreichen",
+      "enterManually": "Manuell eingeben",
+      "retryExtraction": "Extraktion erneut versuchen",
+      "reopen": "Wieder öffnen",
+      "markPaid": "Als bezahlt markieren",
+      "cancel": "Rechnung stornieren",
+      "notDuplicate": "Kein Duplikat"
+    },
+    "list": {
+      "title": "Rechnungen",
+      "upload": "Rechnungen hochladen",
+      "noSupplier": "Noch kein Lieferant",
+      "loadFailed": "Die Rechnungen konnten nicht geladen werden.",
+      "search": {
+        "label": "Suche",
+        "placeholder": "Lieferant oder Rechnungsnummer"
+      },
+      "filters": {
+        "status": "Status",
+        "overdue": "Nur überfällige",
+        "more": "Weitere Filter",
+        "clear": "Filter löschen",
+        "from": "Von",
+        "to": "Bis",
+        "duplicates": "Duplikate",
+        "duplicateStatus": "Duplikatprüfung",
+        "any": "Alle"
+      },
+      "columns": {
+        "supplier": "Lieferant",
+        "status": "Status",
+        "invoiceDate": "Rechnungsdatum",
+        "dueDate": "Fälligkeitsdatum",
+        "total": "Summe",
+        "uploadedAt": "Hochgeladen"
+      },
+      "empty": {
+        "title": "Noch keine Rechnungen",
+        "hint": "Laden Sie Ihre erste PDF-Rechnung hoch, um zu starten.",
+        "filteredTitle": "Keine passenden Rechnungen",
+        "filteredHint": "Versuchen Sie andere Filter oder löschen Sie sie, um alle Rechnungen zu sehen."
+      }
+    },
+    "detail": {
+      "back": "Alle Rechnungen",
+      "actions": "Rechnungsaktionen",
+      "notFound": "Rechnung nicht gefunden",
+      "loadFailed": "Die Rechnung konnte nicht geladen werden.",
+      "extracting": "Das Dokument wird gelesen. Diese Seite aktualisiert sich automatisch, wenn die Extraktion fertig ist.",
+      "extractionFailed": "Das Dokument konnte nicht automatisch gelesen werden. Versuchen Sie die Extraktion erneut, geben Sie die Felder manuell ein oder stornieren Sie die Rechnung.",
+      "extractionRetried": "Extraktion erneut eingereiht",
+      "duplicateHint": "Eine Rechnung mit derselben Datei existiert bereits.",
+      "viewOriginal": "Original anzeigen",
+      "fieldsHeading": "Rechnungsdetails",
+      "language": "Dokumentensprache",
+      "readOnly": "Diese Felder können in diesem Status nicht mehr bearbeitet werden.",
+      "unsaved": "Ungespeicherte Änderungen",
+      "saveFirst": "Speichern Sie Ihre Änderungen vor dem Einreichen",
+      "discard": "Änderungen verwerfen",
+      "documentHeading": "Dokument",
+      "downloadPdf": "PDF herunterladen",
+      "summaryHeading": "Zusammenfassung",
+      "uploadedBy": "Hochgeladen von",
+      "uploadedAt": "Hochgeladen",
+      "submittedBy": "Eingereicht von",
+      "saved": "Änderungen gespeichert",
+      "enteredManually": "Bereit für manuelle Eingabe",
+      "submitted": "Zur Genehmigung eingereicht",
+      "approved": "Rechnung genehmigt",
+      "rejected": "Rechnung abgelehnt",
+      "reopened": "Rechnung wieder geöffnet",
+      "cancelled": "Rechnung storniert",
+      "duplicateCleared": "Als kein Duplikat markiert",
+      "paid": "Rechnung als bezahlt markiert"
+    },
+    "dialogs": {
+      "reason": "Grund",
+      "reject": {
+        "title": "Rechnung ablehnen",
+        "hint": "Der Grund wird in der Rechnungshistorie gespeichert und demjenigen angezeigt, der sie wieder öffnet."
+      },
+      "cancel": {
+        "title": "Rechnung stornieren",
+        "hint": "Eine stornierte Rechnung bleibt in der Historie und kann nicht wiederhergestellt werden."
+      },
+      "notDuplicate": {
+        "title": "Bestätigen, dass dies kein Duplikat ist",
+        "hint": "Erklären Sie, warum diese Rechnung sich von der ähnlichen unterscheidet."
+      },
+      "markPaid": {
+        "title": "Als bezahlt markieren",
+        "referenceHint": "Zum Beispiel die Überweisungsreferenz"
+      }
+    },
+    "audit": {
+      "heading": "Historie",
+      "empty": "Noch nichts geschehen.",
+      "system": "System",
+      "loadMore": "Mehr anzeigen",
+      "failed": "Die Historie konnte nicht geladen werden.",
+      "action": {
+        "invoice": {
+          "uploaded": "Hochgeladen",
+          "duplicate_suspected": "Als mögliches Duplikat markiert",
+          "duplicate_cleared": "Als kein Duplikat bestätigt",
+          "document_downloaded": "Dokument heruntergeladen",
+          "fields_corrected": "Felder korrigiert",
+          "processing_started": "Extraktion gestartet",
+          "extracted": "Felder extrahiert",
+          "review_required": "Prüfung nötig",
+          "extraction_failed": "Extraktion fehlgeschlagen",
+          "extraction_retried": "Extraktion erneut versucht",
+          "manual_entry_started": "Manuelle Eingabe gestartet",
+          "submitted": "Zur Genehmigung eingereicht",
+          "approved": "Genehmigt",
+          "rejected": "Abgelehnt",
+          "reopened": "Wieder geöffnet",
+          "paid": "Als bezahlt markiert",
+          "cancelled": "Storniert"
+        }
+      }
+    },
+    "upload": {
+      "title": "Rechnungen hochladen",
+      "backToList": "Zurück zu den Rechnungen",
+      "dropHint": "PDF-Rechnungen hier ablegen",
+      "choose": "Dateien wählen",
+      "rules": "Nur PDF, bis zu {{ max }} je Datei. {{ parallel }} Dateien werden gleichzeitig hochgeladen.",
+      "queueHeading": "Uploads",
+      "summary": "{{ done }} von {{ total }} hochgeladen, {{ failed }} fehlgeschlagen",
+      "retryFailed": "Fehlgeschlagene erneut versuchen",
+      "clearFinished": "Fertige entfernen",
+      "retry": "Upload erneut versuchen",
+      "remove": "Aus der Liste entfernen",
+      "open": "Rechnung öffnen",
+      "state": {
+        "queued": "Wartend",
+        "uploading": "Wird hochgeladen",
+        "done": "Hochgeladen",
+        "failed": "Fehlgeschlagen"
+      }
+    }
+  }
+}
