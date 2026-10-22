@@ -33,8 +33,26 @@ datasources:
           derivedFields:
             - name: TraceId
               matcherRegex: '"TraceId":"([0-9a-f]{32})"'
-              url: http://dashboard.invoiceflow.localhost:8080/traces/detail/$${__value.raw}
-              urlDisplayLabel: Open trace in Aspire Dashboard
+              url: $${__value.raw}
+              datasourceUid: tempo
+              urlDisplayLabel: Open trace in Tempo
+      - name: Tempo
+        type: tempo
+        uid: tempo
+        access: proxy
+        url: http://tempo.invoiceflow-observability.svc.cluster.local:3200
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+            filterByTraceID: true
+          lokiSearch:
+            datasourceUid: loki
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus
+        access: proxy
+        url: http://prometheus-server.invoiceflow-observability.svc.cluster.local:9090
+        isDefault: false
 
 # Dashboards and data sources are provisioned, so nothing needs to survive a restart
 persistence:

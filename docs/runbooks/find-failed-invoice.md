@@ -133,3 +133,4 @@ Look for:
 
 - Error codes: [`docs/error-codes.md`](../error-codes.md)
 - Failure drills: [`stage5-failure-experiments.md`](stage5-failure-experiments.md)
+- Platform alert conditions: [`observability-alerts.md`](observability-alerts.md)

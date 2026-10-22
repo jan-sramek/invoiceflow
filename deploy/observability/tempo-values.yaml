@@ -1,0 +1,24 @@
+# Monolithic Tempo (same chart repo as Loki/Grafana). OTLP gRPC on 4317 for the collector.
+tempo:
+  reportingEnabled: false
+  retention: 168h
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+persistence:
+  enabled: true
+  size: 5Gi
+
+tempoQuery:
+  enabled: false

@@ -19,6 +19,9 @@ GRAFANA_CHARTS := https://grafana-community.github.io/helm-charts
 OTEL_CHARTS := https://open-telemetry.github.io/opentelemetry-helm-charts
 LOKI_CHART_VERSION := 18.15.1
 GRAFANA_CHART_VERSION := 13.5.0
+TEMPO_CHART_VERSION := 3.2.1
+PROMETHEUS_CHARTS := https://prometheus-community.github.io/helm-charts
+PROMETHEUS_CHART_VERSION := 29.37.1
 COLLECTOR_CHART_VERSION := 0.175.1
 OBSERVABILITY_NS := invoiceflow-observability
 COLLECTOR_NS := invoiceflow-collector
@@ -139,22 +142,27 @@ provision-tenant: doctor images ## Provision or refresh the OnPremises demo tena
 	@./scripts/run-migrator.sh $(IMAGE_TAG)
 	@echo "On-prem demo tenant ready (slug=onprem). Point Tenancy__DevelopmentTenantId at ONPREM_TENANT_ID to exercise it."
 
-observability-up: doctor ## Install Loki, Grafana and the OpenTelemetry Collector
+observability-up: doctor ## Install Loki, Tempo, Prometheus, Grafana and the OpenTelemetry Collector
 	@$(KUBECTL) apply -f deploy/observability/namespaces.yaml
 	@$(HELM) upgrade --install loki loki --repo $(GRAFANA_CHARTS) --version $(LOKI_CHART_VERSION) \
 		--namespace $(OBSERVABILITY_NS) -f deploy/observability/loki-values.yaml --wait --timeout 5m
+	@$(HELM) upgrade --install tempo tempo --repo $(GRAFANA_CHARTS) --version $(TEMPO_CHART_VERSION) \
+		--namespace $(OBSERVABILITY_NS) -f deploy/observability/tempo-values.yaml --wait --timeout 5m
+	@$(HELM) upgrade --install prometheus prometheus --repo $(PROMETHEUS_CHARTS) --version $(PROMETHEUS_CHART_VERSION) \
+		--namespace $(OBSERVABILITY_NS) -f deploy/observability/prometheus-values.yaml --wait --timeout 5m
 	@$(HELM) upgrade --install grafana grafana --repo $(GRAFANA_CHARTS) --version $(GRAFANA_CHART_VERSION) \
 		--namespace $(OBSERVABILITY_NS) -f deploy/observability/grafana-values.yaml --wait --timeout 5m
 	@$(KUBECTL) apply -f deploy/observability/aspire-dashboard.yaml
 	@$(KUBECTL) rollout status deployment/aspire-dashboard --namespace $(OBSERVABILITY_NS) --timeout 5m
 	@$(HELM) upgrade --install collector opentelemetry-collector --repo $(OTEL_CHARTS) --version $(COLLECTOR_CHART_VERSION) \
 		--namespace $(COLLECTOR_NS) -f deploy/observability/collector-values.yaml --wait --timeout 5m
-	@echo "Grafana: http://grafana.invoiceflow.localhost:8080 (user admin, password from make grafana-password)"
-	@echo "Aspire Dashboard: make dashboard-url"
+	@echo "Grafana: http://grafana.invoiceflow.localhost:8080 (Loki, Tempo, Prometheus; make grafana-password)"
+	@echo "Alert conditions: docs/runbooks/observability-alerts.md"
+	@echo "Aspire Dashboard (legacy OTLP mirror): make dashboard-url"
 
-observability-down: doctor ## Remove the observability stack, including stored logs
+observability-down: doctor ## Remove Loki, Tempo, Prometheus, Grafana and the collector
 	@$(HELM) uninstall collector --namespace $(COLLECTOR_NS) --ignore-not-found
-	@$(HELM) uninstall grafana loki --namespace $(OBSERVABILITY_NS) --ignore-not-found
+	@$(HELM) uninstall grafana prometheus tempo loki --namespace $(OBSERVABILITY_NS) --ignore-not-found
 	@$(KUBECTL) delete -f deploy/observability/namespaces.yaml --ignore-not-found
 
 grafana-password: ## Print the Grafana admin password
@@ -165,9 +173,10 @@ dashboard-url: doctor ## Print the login URL of the Aspire Dashboard in the clus
 	@token=$$($(KUBECTL) logs deployment/aspire-dashboard --namespace $(OBSERVABILITY_NS) | grep -o '$(DASHBOARD_TOKEN_PATTERN)' | tail -1); \
 		echo "http://dashboard.invoiceflow.localhost:8080/$$token"
 
-telemetry-check: doctor ## Send test traces through the collector to the Aspire Dashboard
+telemetry-check: doctor ## Send test traces through the collector (Tempo + Aspire Dashboard)
 	@./scripts/telemetry-check.sh
 
+# dotnet run on the host: OTLP goes here only (no Tempo/Prometheus unless you point the collector locally).
 dashboard-up: ## Run the Aspire Dashboard in Docker for apps started with dotnet run
 	@if [ -z "$$(docker ps -q --filter name=^invoiceflow-dashboard$$)" ]; then \
 		docker run -d --rm --name invoiceflow-dashboard \
