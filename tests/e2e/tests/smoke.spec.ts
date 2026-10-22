@@ -23,6 +23,7 @@ test.describe('smoke', { tag: '@smoke' }, () => {
         throw new Error('Set E2E_CLERK_PASSWORD to the Keycloak clerk user password (see make e2e-smoke).');
       }
       await signIn.click();
+      await expect(page).toHaveURL(/auth\.invoiceflow\.localhost/, { timeout: 30_000 });
       await page.locator('#username').fill('clerk');
       await page.locator('#password').fill(password);
       await page.locator('#kc-login').click();

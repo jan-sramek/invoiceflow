@@ -32,8 +32,20 @@ KEYCLOAK_ADMIN_PORT := 18080
 KEYCLOAK_TAG := $(shell git hash-object deploy/images/keycloak/Dockerfile | cut -c1-12)
 DASHBOARD_IMAGE := $(shell grep -o 'mcr.microsoft.com/dotnet/aspire-dashboard[^ ]*' deploy/observability/aspire-dashboard.yaml)
 DASHBOARD_TOKEN_PATTERN := login?t=[0-9a-f]*
-REGISTRY := localhost:5001
+# Cluster image host (mirrored by k3d to the registry container). Always localhost so
+# nodes do not try to pull via their own 127.0.0.1 loopback.
+REGISTRY ?= localhost:5001
+# Host push address. In CI, localhost resolves to ::1 but k3d binds IPv4 only.
+ifeq ($(CI),true)
+PUSH_REGISTRY ?= 127.0.0.1:5001
+else
+PUSH_REGISTRY ?= $(REGISTRY)
+endif
+export REGISTRY
+export PUSH_REGISTRY
 APPS := Api Worker Migrator
+
+
 # Fixed, so every rebuild of the local environment gets the same tenant; not a secret
 DEVELOPMENT_TENANT_ID := 01a130f4-cc70-7419-9b64-feec3b283b96
 # Commit-based tags; uncommitted changes get a unique suffix so every build rolls out
@@ -227,19 +239,40 @@ s3-forward: doctor ## Forward the S3 API to localhost:18333 (Ctrl+C to stop)
 s3-check: doctor ## Upload, read and delete a test object through the S3 API
 	@./scripts/s3-check.sh $(S3_FORWARD_PORT)
 
+# CI: docker build+push to PUSH_REGISTRY (IPv4). Deploy manifests still use REGISTRY=localhost:5001.
 images: doctor web-image ## Build the API, worker, migrator and web images and push them to the cluster registry
+ifeq ($(CI),true)
+	@for app in $(APPS); do \
+		name=invoiceflow-$$(echo $$app | tr '[:upper:]' '[:lower:]'); \
+		push=$(PUSH_REGISTRY)/$$name:$(IMAGE_TAG); \
+		cluster=$(REGISTRY)/$$name:$(IMAGE_TAG); \
+		docker build --file src/InvoiceFlow.$$app/Dockerfile \
+			--build-arg SOURCE_REVISION=$$(git rev-parse HEAD) --tag $$push --tag $$cluster . || exit 1; \
+		docker push $$push || exit 1; \
+		echo "Pushed $$push (cluster pulls $$cluster)"; \
+	done
+else
 	@for app in $(APPS); do \
 		image=$(REGISTRY)/invoiceflow-$$(echo $$app | tr '[:upper:]' '[:lower:]'):$(IMAGE_TAG); \
 		docker buildx build --quiet --push --file src/InvoiceFlow.$$app/Dockerfile \
 			--build-arg SOURCE_REVISION=$$(git rev-parse HEAD) --tag $$image . >/dev/null || exit 1; \
 		echo "Pushed $$image"; \
 	done
+endif
 
 web-image: doctor ## Build the Angular web image and push it to the cluster registry
+ifeq ($(CI),true)
+	@push=$(PUSH_REGISTRY)/invoiceflow-web:$(IMAGE_TAG); \
+		cluster=$(REGISTRY)/invoiceflow-web:$(IMAGE_TAG); \
+		docker build --file web/invoiceflow-web/Dockerfile --tag $$push --tag $$cluster web/invoiceflow-web && \
+		docker push $$push && \
+		echo "Pushed $$push (cluster pulls $$cluster)"
+else
 	@image=$(REGISTRY)/invoiceflow-web:$(IMAGE_TAG); \
 		docker buildx build --quiet --push --file web/invoiceflow-web/Dockerfile \
 			--tag $$image web/invoiceflow-web >/dev/null || exit 1; \
 		echo "Pushed $$image"
+endif
 
 app-up: images db-migrate ## Build the images, migrate the databases and deploy the API, worker and web
 	@./scripts/create-local-secrets.sh
@@ -247,12 +280,26 @@ app-up: images db-migrate ## Build the images, migrate the databases and deploy 
 	@$(KUBECTL) -n $(APP_NS) create configmap web-config \
 		--from-file=config.json=deploy/kubernetes/app/web-config.json \
 		--dry-run=client -o yaml | $(KUBECTL) apply -f -
-	@for manifest in deploy/kubernetes/app/*.yaml; do \
-		sed -e 's/$${IMAGE_TAG}/$(IMAGE_TAG)/g' \
-			-e 's/$${DEVELOPMENT_TENANT_ID}/$(DEVELOPMENT_TENANT_ID)/g' \
-			-e 's|$${DOCUMENT_EXTRACTION_SERVICE_URL}|$(DOCUMENT_EXTRACTION_SERVICE_URL)|g' \
-			$$manifest; echo ---; \
-	done | $(KUBECTL) apply -f -
+	@# Prefer pod IPs: ClusterIP/DNS has timed out on GHA k3d even when pods are Ready.
+	@postgres_host="$$($(KUBECTL) -n $(INFRA_NS) get pod postgres-0 -o jsonpath='{.status.podIP}')"; \
+		seaweedfs_host="$$($(KUBECTL) -n $(INFRA_NS) get pod seaweedfs-0 -o jsonpath='{.status.podIP}')"; \
+		rabbitmq_host="$$($(KUBECTL) -n $(INFRA_NS) get pod rabbitmq-0 -o jsonpath='{.status.podIP}')"; \
+		keycloak_host="$$($(KUBECTL) -n $(INFRA_NS) get pod -l app.kubernetes.io/name=keycloak -o jsonpath='{.items[0].status.podIP}')"; \
+		if [ -z "$$postgres_host" ] || [ -z "$$seaweedfs_host" ] || [ -z "$$rabbitmq_host" ] || [ -z "$$keycloak_host" ]; then \
+			echo "Missing infra pod IP(s): postgres=$$postgres_host seaweedfs=$$seaweedfs_host rabbitmq=$$rabbitmq_host keycloak=$$keycloak_host" >&2; exit 1; \
+		fi; \
+		echo "App infra hosts: postgres=$$postgres_host seaweedfs=$$seaweedfs_host rabbitmq=$$rabbitmq_host keycloak=$$keycloak_host"; \
+		for manifest in deploy/kubernetes/app/*.yaml; do \
+			sed -e 's/$${IMAGE_TAG}/$(IMAGE_TAG)/g' \
+				-e 's|$${REGISTRY}|$(REGISTRY)|g' \
+				-e 's/$${DEVELOPMENT_TENANT_ID}/$(DEVELOPMENT_TENANT_ID)/g' \
+				-e 's|$${DOCUMENT_EXTRACTION_SERVICE_URL}|$(DOCUMENT_EXTRACTION_SERVICE_URL)|g' \
+				-e 's|$${POSTGRES_HOST}|'"$$postgres_host"'|g' \
+				-e 's|$${SEAWEEDFS_HOST}|'"$$seaweedfs_host"'|g' \
+				-e 's|$${RABBITMQ_HOST}|'"$$rabbitmq_host"'|g' \
+				-e 's|$${KEYCLOAK_HOST}|'"$$keycloak_host"'|g' \
+				$$manifest; echo ---; \
+		done | $(KUBECTL) apply -f -
 	@$(KUBECTL) rollout status deployment/api --namespace $(APP_NS) --timeout 5m
 	@$(KUBECTL) rollout status deployment/worker --namespace $(APP_NS) --timeout 5m
 	@$(KUBECTL) rollout status deployment/web --namespace $(APP_NS) --timeout 5m
@@ -293,8 +340,16 @@ rabbitmq-ui: doctor ## Forward the RabbitMQ management UI to localhost:15672 (Ct
 	@$(KUBECTL) port-forward service/rabbitmq $(RABBITMQ_UI_PORT):15672 --namespace $(INFRA_NS)
 
 keycloak-image: doctor ## Build the Keycloak image and push it to the cluster registry
+ifeq ($(CI),true)
+	@docker build \
+		--tag $(PUSH_REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG) \
+		--tag $(REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG) \
+		deploy/images/keycloak
+	@docker push $(PUSH_REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG)
+else
 	@docker buildx build --quiet --push --tag $(REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG) deploy/images/keycloak >/dev/null
-	@echo "Pushed $(REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG)"
+endif
+	@echo "Pushed $(PUSH_REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG) (cluster pulls $(REGISTRY)/…)"
 
 keycloak-up: keycloak-image ## Install Keycloak with the invoiceflow realm (run postgres-up first)
 	@./scripts/create-local-secrets.sh
@@ -303,10 +358,24 @@ keycloak-up: keycloak-image ## Install Keycloak with the invoiceflow realm (run 
 	@$(KUBECTL) -n $(INFRA_NS) create configmap keycloak-realm \
 		--from-file=invoiceflow-realm.json=deploy/keycloak/invoiceflow-realm.json \
 		--dry-run=client -o yaml | $(KUBECTL) apply -f -
-	@sed 's/$${KEYCLOAK_TAG}/$(KEYCLOAK_TAG)/g' deploy/kubernetes/keycloak/keycloak.yaml | $(KUBECTL) apply -f -
-	@$(KUBECTL) rollout status deployment/keycloak --namespace $(INFRA_NS) --timeout 5m
+	@# Prefer the postgres pod IP: ClusterIP/kube-proxy has timed out on GHA k3d even when DNS works.
+	@postgres_host="$$($(KUBECTL) -n $(INFRA_NS) get pod postgres-0 -o jsonpath='{.status.podIP}')"; \
+		if [ -z "$$postgres_host" ]; then echo "postgres-0 has no pod IP" >&2; exit 1; fi; \
+		echo "Keycloak JDBC host (postgres-0 pod IP): $$postgres_host"; \
+		sed -e 's/$${KEYCLOAK_TAG}/$(KEYCLOAK_TAG)/g' \
+			-e 's|$${REGISTRY}|$(REGISTRY)|g' \
+			-e 's|$${POSTGRES_HOST}|'"$$postgres_host"'|g' \
+			deploy/kubernetes/keycloak/keycloak.yaml | $(KUBECTL) apply -f -; \
+		$(KUBECTL) -n $(INFRA_NS) get deploy keycloak -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="KC_DB_URL")].value}{"\n"}'
+	@if ! $(KUBECTL) rollout status deployment/keycloak --namespace $(INFRA_NS) --timeout 5m; then \
+		echo "Keycloak rollout failed; pod status:"; \
+		$(KUBECTL) get pods -n $(INFRA_NS) -o wide; \
+		$(KUBECTL) describe pods -n $(INFRA_NS) -l app.kubernetes.io/name=keycloak | tail -n 80; \
+		$(KUBECTL) logs -n $(INFRA_NS) -l app.kubernetes.io/name=keycloak --tail=80 || true; \
+		exit 1; \
+	fi
 	@./scripts/keycloak-users.sh
-	@echo "Sign-in: https://auth.invoiceflow.localhost:8080/realms/invoiceflow/account"
+	@echo "Sign-in: https://auth.invoiceflow.localhost:8443/realms/invoiceflow/account"
 	@echo "Trust the local CA once: make trust-local-ca"
 	@echo "Admin console: make keycloak-admin"
 	@echo "Persona passwords: kubectl -n $(INFRA_NS) get secret keycloak-users -o jsonpath='{.data.clerk}' | base64 -d"

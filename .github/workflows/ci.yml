@@ -130,6 +130,9 @@ jobs:
       KUBECONFIG: ${{ github.workspace }}/.kube/config
       INVOICEFLOW_BACKUP_DIR: ${{ github.workspace }}/.local/share/invoiceflow/backups
       IMAGE_TAG: ${{ github.sha }}
+      # Push over IPv4; cluster still pulls localhost:5001 (k3d registry mirror).
+      PUSH_REGISTRY: 127.0.0.1:5001
+      REGISTRY: localhost:5001
       # Fake extractor — no Ollama in CI
       DOCUMENT_EXTRACTION_SERVICE_URL: ""
     steps:
@@ -165,7 +168,8 @@ jobs:
           sudo systemctl restart docker
           docker info | grep -A5 'Insecure Registries'
 
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      # Do not use setup-buildx-action here: its container driver cannot reach the
+      # host-bound k3d registry on 127.0.0.1:5001. make images uses docker build/push in CI.
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:

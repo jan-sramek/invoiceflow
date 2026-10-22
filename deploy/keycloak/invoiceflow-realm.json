@@ -43,7 +43,7 @@
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://invoiceflow.localhost:8080/*##http://localhost:4200/*"
       },
-      "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "email"],
+      "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "email", "basic"],
       "optionalClientScopes": ["address", "phone", "offline_access"],
       "protocolMappers": [
         {

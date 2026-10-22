@@ -27,6 +27,9 @@ registries:
       "localhost:5001":
         endpoint:
           - http://invoiceflow-registry:5000
+      "127.0.0.1:5001":
+        endpoint:
+          - http://invoiceflow-registry:5000
 volumes:
   - volume: ${INVOICEFLOW_BACKUP_DIR}:/var/backups/invoiceflow
     nodeFilters:
@@ -38,6 +41,10 @@ options:
         nodeFilters:
           - server:*
       - arg: --disable-network-policy
+        nodeFilters:
+          - server:*
+      # VXLAN/ClusterIP is flaky on GitHub Actions Docker; host-gw works on a single node.
+      - arg: --flannel-backend=host-gw
         nodeFilters:
           - server:*
   kubeconfig:

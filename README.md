@@ -7,7 +7,7 @@ Multi-tenant invoice processing with .NET, Angular and Kubernetes. Work in progr
 Stage 1 UI lives in [`web/invoiceflow-web`](web/invoiceflow-web).
 
 - Local (Windows or macOS): from that folder, `npm ci`, `npm start` (proxies `/api` to `http://localhost:5080`). Uses development personas (`X-Development-User`) unless `config.json` sets OIDC.
-- Cluster (macOS + Colima + k3d only today): `make stack-up` serves the SPA at `http://invoiceflow.localhost:8080/` and the API at `/api`. Sign in through Keycloak at `https://auth.invoiceflow.localhost:8080`. Windows does not run Colima/`make doctor` yet.
+- Cluster (macOS + Colima + k3d only today): `make stack-up` serves the SPA at `http://invoiceflow.localhost:8080/` and the API at `/api`. Sign in through Keycloak at `https://auth.invoiceflow.localhost:8443`. Windows does not run Colima/`make doctor` yet.
 
 ## Authentication (Stage 4)
 

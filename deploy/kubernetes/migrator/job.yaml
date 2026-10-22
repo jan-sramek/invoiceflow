@@ -19,6 +19,10 @@ spec:
     spec:
       restartPolicy: Never
       automountServiceAccountToken: false
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "2"
       securityContext:
         runAsNonRoot: true
         runAsUser: 1654
@@ -29,7 +33,7 @@ spec:
       containers:
         - name: migrator
           # make db-migrate fills in the tag
-          image: localhost:5001/invoiceflow-migrator:${IMAGE_TAG}
+          image: ${REGISTRY}/invoiceflow-migrator:${IMAGE_TAG}
           env:
             - name: NODE_IP
               valueFrom:
@@ -52,7 +56,8 @@ spec:
                   key: password
             # The catalog owner, so it can change the schema
             - name: ConnectionStrings__Catalog
-              value: Host=postgres.invoiceflow-infra.svc.cluster.local;Database=invoiceflow_catalog;Username=catalog_migrator;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
+              # make db-migrate substitutes the postgres-0 pod IP (DNS/ClusterIP flaky on GHA k3d).
+              value: Host=${POSTGRES_HOST};Database=invoiceflow_catalog;Username=catalog_migrator;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
             - name: SchemaMigration__RootCertificatePath
               value: /var/run/secrets/invoiceflow/onprem-ca/ca.crt
           resources:
