@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Declares InvoiceFlow exchanges, quorum processing queue, TTL retry queues, and DLQ.
-# Applications must not declare topology. Uses rabbitmqadmin (management plugin), not rabbitmqctl.
+# Applications must not declare topology. Uses rabbitmqadmin v2 (management plugin HTTP API).
 #
 # WARNING: Queue arguments are immutable. If invoice-processing already exists as a classic
 # queue (or with different args), delete it before re-running this script:
@@ -13,39 +13,41 @@ admin_pass="$("${kubectl[@]}" -n invoiceflow-infra get secret rabbitmq-admin -o 
 
 rabbitmqadmin() {
   "${kubectl[@]}" -n invoiceflow-infra exec -i rabbitmq-0 -- \
-    rabbitmqadmin --username=admin --password="$admin_pass" --vhost="$vhost" "$@"
+    rabbitmqadmin --non-interactive \
+      --username=admin --password="$admin_pass" --vhost="$vhost" "$@"
 }
 
 # Topic for new publishes (API outbox → worker)
-rabbitmqadmin declare exchange name=invoiceflow.events type=topic durable=true
+rabbitmqadmin declare exchange --name=invoiceflow.events --type=topic --durable=true
 # Fanout-style topic for TTL retry staging (worker → retry queues)
-rabbitmqadmin declare exchange name=invoiceflow.retry type=topic durable=true
+rabbitmqadmin declare exchange --name=invoiceflow.retry --type=topic --durable=true
 # Dead-letter exchange for poison / exhausted messages
-rabbitmqadmin declare exchange name=invoiceflow.dlx type=topic durable=true
+rabbitmqadmin declare exchange --name=invoiceflow.dlx --type=topic --durable=true
 
 # Quorum processing queue (survives node loss better than classic)
-rabbitmqadmin declare queue name=invoice-processing durable=true \
-  arguments='{"x-queue-type":"quorum"}'
-rabbitmqadmin declare binding source=invoiceflow.events destination_type=queue \
-  destination=invoice-processing routing_key=invoice.uploaded
+rabbitmqadmin declare queue --name=invoice-processing --type=quorum --durable=true
+rabbitmqadmin declare binding \
+  --source=invoiceflow.events --destination-type=queue \
+  --destination=invoice-processing --routing-key=invoice.uploaded
 
 # TTL retry queues: after expiry, messages dead-letter back to events / invoice.uploaded
 declare_retry_queue() {
   local name="$1" ttl_ms="$2" routing_key="$3"
-  rabbitmqadmin declare queue name="$name" durable=true \
-    arguments="{\"x-message-ttl\":${ttl_ms},\"x-dead-letter-exchange\":\"invoiceflow.events\",\"x-dead-letter-routing-key\":\"invoice.uploaded\"}"
-  rabbitmqadmin declare binding source=invoiceflow.retry destination_type=queue \
-    destination="$name" routing_key="$routing_key"
+  rabbitmqadmin declare queue --name="$name" --durable=true \
+    --arguments="{\"x-message-ttl\":${ttl_ms},\"x-dead-letter-exchange\":\"invoiceflow.events\",\"x-dead-letter-routing-key\":\"invoice.uploaded\"}"
+  rabbitmqadmin declare binding \
+    --source=invoiceflow.retry --destination-type=queue \
+    --destination="$name" --routing-key="$routing_key"
 }
 
 declare_retry_queue invoice-processing.retry.10s 10000 retry.10s
 declare_retry_queue invoice-processing.retry.1m 60000 retry.1m
 declare_retry_queue invoice-processing.retry.5m 300000 retry.5m
 
-rabbitmqadmin declare queue name=invoice-processing.dlq durable=true \
-  arguments='{"x-queue-type":"quorum"}'
-rabbitmqadmin declare binding source=invoiceflow.dlx destination_type=queue \
-  destination=invoice-processing.dlq routing_key=invoice.dead
+rabbitmqadmin declare queue --name=invoice-processing.dlq --type=quorum --durable=true
+rabbitmqadmin declare binding \
+  --source=invoiceflow.dlx --destination-type=queue \
+  --destination=invoice-processing.dlq --routing-key=invoice.dead
 
 echo "RabbitMQ topology ready:"
 echo "  invoiceflow.events → invoice-processing (quorum) / invoice.uploaded"
