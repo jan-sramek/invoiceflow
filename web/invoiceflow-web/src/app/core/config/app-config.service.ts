@@ -24,6 +24,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
 @Injectable({ providedIn: 'root' })
 export class AppConfigService {
   private readonly state = signal<AppConfig>(DEFAULT_APP_CONFIG);
+  private loadPromise: Promise<void> | null = null;
 
   readonly config = this.state.asReadonly();
 
@@ -41,6 +42,12 @@ export class AppConfigService {
 
   get usesOidc(): boolean {
     return this.state().oidc !== null;
+  }
+
+  /** Same as {@link load}, but shares one in-flight / completed promise for APP_INITIALIZER races. */
+  ensureLoaded(url = 'config.json'): Promise<void> {
+    this.loadPromise ??= this.load(url);
+    return this.loadPromise;
   }
 
   /** Loads `config.json`; falls back to the defaults so a missing file never blocks start-up. */
