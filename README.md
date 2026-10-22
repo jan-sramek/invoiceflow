@@ -35,6 +35,10 @@ Simulates a client-site PostgreSQL outside k3d (macOS + Colima, same host-gatewa
 
 Unavailable on-prem DBs fail within ~2s as `tenant.unavailable` (503) with a per-tenant circuit breaker; schema behind / migration error returns `tenant.maintenance`. Catalog readiness stays independent. Isolation drills: [`docs/runbooks/stage6-onprem-isolation.md`](docs/runbooks/stage6-onprem-isolation.md).
 
+## Backups (Stage 8)
+
+Postgres dumps land on the host under `INVOICEFLOW_BACKUP_DIR` (k3d mounts that path at `/var/backups/invoiceflow`). Install with `make backup-up`, run once with `make backup-now`, list with `make backup-list`. Single-tenant restore drill: [`docs/runbooks/backup-restore.md`](docs/runbooks/backup-restore.md).
+
 ## End-to-end tests
 
 Playwright smoke tests live in [`tests/e2e`](tests/e2e). CI runs them on a single-node k3d cluster with the fake extractor (`make e2e-ci` / job **Playwright e2e (k3d)**). On macOS against a local cluster: `make e2e-install`, then `make e2e-smoke`. On Windows against local `ng serve`, see [`tests/e2e/README.md`](tests/e2e/README.md).
