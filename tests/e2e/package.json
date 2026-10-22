@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "invoiceflow-e2e",
   "version": "0.0.0",
   "private": true,
@@ -12,9 +12,11 @@
     "typecheck": "tsc --noEmit",
     "test": "playwright test",
     "test:smoke": "playwright test --grep @smoke",
+    "test:a11y": "playwright test --grep @a11y",
     "report": "playwright show-report"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "1.64.1",
     "@types/node": "24.19.2",
     "typescript": "5.9.3"

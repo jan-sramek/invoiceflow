@@ -46,7 +46,7 @@ Postgres dumps land on the host under `INVOICEFLOW_BACKUP_DIR` (k3d mounts that 
 
 ## End-to-end tests
 
-Playwright smoke tests live in [`tests/e2e`](tests/e2e). CI runs them on a single-node k3d cluster with the fake extractor (`make e2e-ci` / job **Playwright e2e (k3d)**). On macOS against a local cluster: `make e2e-install`, then `make e2e-smoke`. On Windows against local `ng serve`, see [`tests/e2e/README.md`](tests/e2e/README.md).
+Playwright smoke tests live in [`tests/e2e`](tests/e2e). CI runs them on a single-node k3d cluster with the fake extractor (`make e2e-ci` / job **Playwright e2e (k3d)**). On macOS against a local cluster: `make e2e-install`, then `make e2e-smoke`. On Windows against local `ng serve`, see [`tests/e2e/README.md`](tests/e2e/README.md). On-demand axe accessibility scans: `make e2e-a11y` — [`docs/runbooks/accessibility-audit.md`](docs/runbooks/accessibility-audit.md).
 
 k6 ingress smoke (5 VUs, 30s): `make k6-smoke` — [`docs/runbooks/k6-load.md`](docs/runbooks/k6-load.md).
 
