@@ -41,14 +41,20 @@ class AppConfigOidcLoader implements StsConfigLoader {
         useRefreshToken: true,
         renewTimeBeforeTokenExpiresInSeconds: 30,
         logLevel: LogLevel.Warn,
-        secureRoutes: [
-          this.appConfig.apiBaseUrl.startsWith('http')
-            ? this.appConfig.apiBaseUrl
-            : `${window.location.origin}${this.appConfig.apiBaseUrl}`,
-        ],
+        // HttpClient calls use relative `/api/...`; match that. Also keep the absolute
+        // origin form in case a caller builds a full URL.
+        secureRoutes: apiSecureRoutes(this.appConfig.apiBaseUrl),
       },
     ];
   }
+}
+
+function apiSecureRoutes(apiBaseUrl: string): string[] {
+  if (apiBaseUrl.startsWith('http')) {
+    return [apiBaseUrl];
+  }
+  const relative = apiBaseUrl.startsWith('/') ? apiBaseUrl : `/${apiBaseUrl}`;
+  return [relative, `${window.location.origin}${relative}`];
 }
 
 /** Registers OIDC when `config.json` has an authority; otherwise a no-op loader. */
