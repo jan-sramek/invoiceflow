@@ -48,6 +48,8 @@ Postgres dumps land on the host under `INVOICEFLOW_BACKUP_DIR` (k3d mounts that 
 
 Playwright smoke tests live in [`tests/e2e`](tests/e2e). CI runs them on a single-node k3d cluster with the fake extractor (`make e2e-ci` / job **Playwright e2e (k3d)**). On macOS against a local cluster: `make e2e-install`, then `make e2e-smoke`. On Windows against local `ng serve`, see [`tests/e2e/README.md`](tests/e2e/README.md).
 
+k6 ingress smoke (5 VUs, 30s): `make k6-smoke` — [`docs/runbooks/k6-load.md`](docs/runbooks/k6-load.md).
+
 ## Architecture note
 
 Manifests live under [`deploy/kubernetes`](deploy/kubernetes) (app, Postgres, SeaweedFS, RabbitMQ, Keycloak, backup CronJob, on-prem spike). `make stack-up` targets a local k3d cluster with Traefik ingress; workloads split across `invoiceflow` and `invoiceflow-infra`. Invoice PDFs go to SeaweedFS; processing is driven by the transactional outbox → RabbitMQ → worker path described above.
