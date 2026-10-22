@@ -39,6 +39,11 @@ Unavailable on-prem DBs fail within ~2s as `tenant.unavailable` (503) with a per
 
 Postgres dumps land on the host under `INVOICEFLOW_BACKUP_DIR` (k3d mounts that path at `/var/backups/invoiceflow`). Install with `make backup-up`, run once with `make backup-now`, list with `make backup-list`. Single-tenant restore drill: [`docs/runbooks/backup-restore.md`](docs/runbooks/backup-restore.md).
 
+## Security verification (Stage 8)
+
+- OWASP ASVS 5.0 Level 2 checklist: [`docs/security/asvs-checklist.md`](docs/security/asvs-checklist.md).
+- Credential rotation drill (tenant DB password, Keycloak signing key): [`docs/runbooks/credential-rotation-drill.md`](docs/runbooks/credential-rotation-drill.md) (`make rotation-drill`).
+
 ## End-to-end tests
 
 Playwright smoke tests live in [`tests/e2e`](tests/e2e). CI runs them on a single-node k3d cluster with the fake extractor (`make e2e-ci` / job **Playwright e2e (k3d)**). On macOS against a local cluster: `make e2e-install`, then `make e2e-smoke`. On Windows against local `ng serve`, see [`tests/e2e/README.md`](tests/e2e/README.md).

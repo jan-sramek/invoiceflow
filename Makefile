@@ -62,7 +62,8 @@ endif
 	seaweedfs-up seaweedfs-down s3-credentials s3-forward s3-check images web-image \
 	app-up app-down app-check rabbitmq-up rabbitmq-down rabbitmq-password rabbitmq-ui \
 	keycloak-image keycloak-up keycloak-down keycloak-password keycloak-admin trust-local-ca \
-	db-up db-migrate db-down stack-up e2e-install e2e-typecheck e2e-smoke e2e-ci
+	db-up db-migrate db-down stack-up rotation-drill \
+	e2e-install e2e-typecheck e2e-smoke e2e-ci
 
 help:
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -219,6 +220,9 @@ backup-now: doctor ## Run one Postgres backup Job immediately
 backup-list: ## List Postgres backup epochs on the host
 	@echo "Host backups under $(INVOICEFLOW_BACKUP_DIR)/postgres:"
 	@ls -la "$(INVOICEFLOW_BACKUP_DIR)/postgres" 2>/dev/null || echo "(none yet — run make backup-up && make backup-now)"
+
+rotation-drill: ## Credential rotation drill runbook (tenant DB password + Keycloak signing key)
+	@echo "docs/runbooks/credential-rotation-drill.md"
 
 # The tenant can only be registered once the catalog schema exists, hence two migrations
 db-up: images ## Create the catalog and the development tenant's database, then migrate both (run postgres-up first)
