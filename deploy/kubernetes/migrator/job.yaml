@@ -56,7 +56,8 @@ spec:
                   key: password
             # The catalog owner, so it can change the schema
             - name: ConnectionStrings__Catalog
-              value: Host=postgres.invoiceflow-infra.svc.cluster.local.;Database=invoiceflow_catalog;Username=catalog_migrator;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
+              # Headless pod DNS (not ClusterIP): kube-proxy to ClusterIP has timed out on GHA k3d.
+              value: Host=postgres-0.postgres-headless.invoiceflow-infra.svc.cluster.local.;Database=invoiceflow_catalog;Username=catalog_migrator;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
             - name: SchemaMigration__RootCertificatePath
               value: /var/run/secrets/invoiceflow/onprem-ca/ca.crt
           resources:

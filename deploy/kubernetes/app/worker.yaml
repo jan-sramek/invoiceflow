@@ -57,7 +57,8 @@ spec:
                   key: password
             # Trailing dot: absolute FQDN so Java does not append search domains (ndots).
             - name: ConnectionStrings__Catalog
-              value: Host=postgres.invoiceflow-infra.svc.cluster.local.;Database=invoiceflow_catalog;Username=catalog_app;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
+              # Headless pod DNS (not ClusterIP): kube-proxy to ClusterIP has timed out on GHA k3d.
+              value: Host=postgres-0.postgres-headless.invoiceflow-infra.svc.cluster.local.;Database=invoiceflow_catalog;Username=catalog_app;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
             # Fallback when no message is being processed (health / startup)
             - name: Tenancy__DevelopmentTenantId
               value: "${DEVELOPMENT_TENANT_ID}"

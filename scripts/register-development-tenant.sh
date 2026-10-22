@@ -15,7 +15,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO tenant_databases
   (tenant_id, location, host, port, database_name, ssl_mode, credentials_key, runtime_role)
 VALUES
-  (:'tenant_id', 'Managed', 'postgres.invoiceflow-infra.svc.cluster.local', 5432, 'tenant_development',
+  (:'tenant_id', 'Managed', 'postgres-0.postgres-headless.invoiceflow-infra.svc.cluster.local', 5432, 'tenant_development',
    'Disable', 'development', 'tenant_development_app')
 ON CONFLICT (tenant_id) DO NOTHING;
 SQL
