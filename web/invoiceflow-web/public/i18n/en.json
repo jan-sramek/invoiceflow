@@ -21,7 +21,8 @@
     "language": {
       "label": "Language",
       "en": "English",
-      "cs": "Čeština"
+      "cs": "Čeština",
+      "de": "Deutsch"
     },
     "common": {
       "cancel": "Cancel",

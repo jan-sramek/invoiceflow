@@ -6,7 +6,7 @@ import { TranslatedPaginatorIntl } from './translated-paginator-intl';
 import { TranslocoHttpLoader } from './transloco-http-loader';
 
 /**
- * Transloco with English and Czech, English as fallback, and the start-up language loaded before the first render.
+ * Transloco with English, Czech and German, English as fallback, and the start-up language loaded before the first render.
  * Missing keys are not logged: `npm run i18n:check` keeps the files in step, and the UI falls back to English.
  */
 export function provideI18n(): (Provider | EnvironmentProviders | EnvironmentProviders[])[] {

@@ -6,16 +6,16 @@ describe('pickInitialLanguage', () => {
   });
 
   it('ignores a saved value that is not a supported language', () => {
-    expect(pickInitialLanguage('de', ['cs-CZ'])).toBe('cs');
+    expect(pickInitialLanguage('fr', ['cs-CZ'])).toBe('cs');
   });
 
   it('uses the first supported browser language, by its base tag', () => {
-    expect(pickInitialLanguage(null, ['de-DE', 'cs-CZ', 'en'])).toBe('cs');
+    expect(pickInitialLanguage(null, ['de-DE', 'cs-CZ', 'en'])).toBe('de');
     expect(pickInitialLanguage(null, ['EN-gb'])).toBe('en');
   });
 
   it('falls back to English', () => {
-    expect(pickInitialLanguage(null, ['de', 'fr'])).toBe('en');
+    expect(pickInitialLanguage(null, ['fr', 'it'])).toBe('en');
     expect(pickInitialLanguage(null, [])).toBe('en');
   });
 });
