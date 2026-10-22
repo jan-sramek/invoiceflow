@@ -66,7 +66,8 @@ endif
 	app-up app-down app-check rabbitmq-up rabbitmq-down rabbitmq-password rabbitmq-ui \
 	keycloak-image keycloak-up keycloak-down keycloak-password keycloak-admin trust-local-ca \
 	db-up db-migrate db-down stack-up rotation-drill \
-	e2e-install e2e-typecheck e2e-smoke e2e-ci
+	e2e-install e2e-typecheck e2e-smoke e2e-ci \
+	k6-smoke
 
 help:
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -451,3 +452,13 @@ e2e-ci: ## Create the CI cluster, deploy the stack with the fake extractor, and 
 	@$(MAKE) --no-print-directory cluster-up K3D_CONFIG=deploy/k3d/cluster-ci.yaml
 	@$(MAKE) --no-print-directory stack-up DOCUMENT_EXTRACTION_SERVICE_URL=
 	@$(MAKE) --no-print-directory e2e-install e2e-smoke
+
+# BASE_URL defaults in tests/k6/smoke.js; optional K6_ACCESS_TOKEN for authenticated list calls.
+k6-smoke: ## Run a short k6 smoke load (5 VUs, 30s) against the ingress
+	@if command -v k6 >/dev/null 2>&1; then \
+		k6 run tests/k6/smoke.js; \
+	else \
+		echo "k6 is not installed. Install: https://grafana.com/docs/k6/latest/set-up/install-k6/"; \
+		echo "Then: make k6-smoke   (see docs/runbooks/k6-load.md)"; \
+		exit 1; \
+	fi
