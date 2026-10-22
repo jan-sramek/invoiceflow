@@ -72,7 +72,7 @@ spec:
             - name: Authentication__RequireHttpsMetadata
               value: "false"
             - name: DocumentStorage__ServiceUrl
-              value: http://seaweedfs.invoiceflow-infra.svc.cluster.local.:8333
+              value: http://seaweedfs-0.seaweedfs-headless.invoiceflow-infra.svc.cluster.local.:8333
             - name: DocumentStorage__Bucket
               value: invoiceflow-documents
             - name: DocumentStorage__AccessKey
@@ -86,7 +86,7 @@ spec:
                   name: document-storage
                   key: secret-key
             - name: RabbitMq__Host
-              value: rabbitmq.invoiceflow-infra.svc.cluster.local.
+              value: rabbitmq-0.rabbitmq-headless.invoiceflow-infra.svc.cluster.local.
             - name: RabbitMq__VirtualHost
               value: invoiceflow
             - name: RabbitMq__UserName
