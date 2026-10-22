@@ -5,9 +5,18 @@
 set -euo pipefail
 
 tenant_id="$1"
+kubectl=(kubectl --context k3d-invoiceflow)
 
-kubectl --context k3d-invoiceflow -n invoiceflow-infra exec -i postgres-0 -- \
-  psql -U postgres -d invoiceflow_catalog -v ON_ERROR_STOP=1 -q -v tenant_id="$tenant_id" <<'SQL'
+# Same host the migrator/API use: DNS/ClusterIP to Postgres is flaky on GHA k3d.
+postgres_host="$("${kubectl[@]}" -n invoiceflow-infra get pod postgres-0 -o jsonpath='{.status.podIP}')"
+if [[ -z "$postgres_host" ]]; then
+  echo "postgres-0 has no pod IP" >&2
+  exit 1
+fi
+
+"${kubectl[@]}" -n invoiceflow-infra exec -i postgres-0 -- \
+  psql -U postgres -d invoiceflow_catalog -v ON_ERROR_STOP=1 -q \
+  -v tenant_id="$tenant_id" -v host="$postgres_host" <<'SQL'
 INSERT INTO tenants (id, name, slug, status, created_at)
 VALUES (:'tenant_id', 'Development', 'development', 'Active', now())
 ON CONFLICT (id) DO NOTHING;
@@ -15,9 +24,9 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO tenant_databases
   (tenant_id, location, host, port, database_name, ssl_mode, credentials_key, runtime_role)
 VALUES
-  (:'tenant_id', 'Managed', 'postgres-0.postgres-headless.invoiceflow-infra.svc.cluster.local', 5432, 'tenant_development',
+  (:'tenant_id', 'Managed', :'host', 5432, 'tenant_development',
    'Disable', 'development', 'tenant_development_app')
 ON CONFLICT (tenant_id) DO NOTHING;
 SQL
 
-echo "Development tenant $tenant_id registered"
+echo "Development tenant $tenant_id registered (Postgres host $postgres_host)"

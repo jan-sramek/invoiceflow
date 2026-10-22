@@ -280,13 +280,24 @@ app-up: images db-migrate ## Build the images, migrate the databases and deploy 
 	@$(KUBECTL) -n $(APP_NS) create configmap web-config \
 		--from-file=config.json=deploy/kubernetes/app/web-config.json \
 		--dry-run=client -o yaml | $(KUBECTL) apply -f -
-	@for manifest in deploy/kubernetes/app/*.yaml; do \
-		sed -e 's/$${IMAGE_TAG}/$(IMAGE_TAG)/g' \
-			-e 's|$${REGISTRY}|$(REGISTRY)|g' \
-			-e 's/$${DEVELOPMENT_TENANT_ID}/$(DEVELOPMENT_TENANT_ID)/g' \
-			-e 's|$${DOCUMENT_EXTRACTION_SERVICE_URL}|$(DOCUMENT_EXTRACTION_SERVICE_URL)|g' \
-			$$manifest; echo ---; \
-	done | $(KUBECTL) apply -f -
+	@# Prefer StatefulSet pod IPs: ClusterIP/DNS has timed out on GHA k3d even when pods are Ready.
+	@postgres_host="$$($(KUBECTL) -n $(INFRA_NS) get pod postgres-0 -o jsonpath='{.status.podIP}')"; \
+		seaweedfs_host="$$($(KUBECTL) -n $(INFRA_NS) get pod seaweedfs-0 -o jsonpath='{.status.podIP}')"; \
+		rabbitmq_host="$$($(KUBECTL) -n $(INFRA_NS) get pod rabbitmq-0 -o jsonpath='{.status.podIP}')"; \
+		if [ -z "$$postgres_host" ] || [ -z "$$seaweedfs_host" ] || [ -z "$$rabbitmq_host" ]; then \
+			echo "Missing infra pod IP(s): postgres=$$postgres_host seaweedfs=$$seaweedfs_host rabbitmq=$$rabbitmq_host" >&2; exit 1; \
+		fi; \
+		echo "App infra hosts: postgres=$$postgres_host seaweedfs=$$seaweedfs_host rabbitmq=$$rabbitmq_host"; \
+		for manifest in deploy/kubernetes/app/*.yaml; do \
+			sed -e 's/$${IMAGE_TAG}/$(IMAGE_TAG)/g' \
+				-e 's|$${REGISTRY}|$(REGISTRY)|g' \
+				-e 's/$${DEVELOPMENT_TENANT_ID}/$(DEVELOPMENT_TENANT_ID)/g' \
+				-e 's|$${DOCUMENT_EXTRACTION_SERVICE_URL}|$(DOCUMENT_EXTRACTION_SERVICE_URL)|g' \
+				-e 's|$${POSTGRES_HOST}|'"$$postgres_host"'|g' \
+				-e 's|$${SEAWEEDFS_HOST}|'"$$seaweedfs_host"'|g' \
+				-e 's|$${RABBITMQ_HOST}|'"$$rabbitmq_host"'|g' \
+				$$manifest; echo ---; \
+		done | $(KUBECTL) apply -f -
 	@$(KUBECTL) rollout status deployment/api --namespace $(APP_NS) --timeout 5m
 	@$(KUBECTL) rollout status deployment/worker --namespace $(APP_NS) --timeout 5m
 	@$(KUBECTL) rollout status deployment/web --namespace $(APP_NS) --timeout 5m

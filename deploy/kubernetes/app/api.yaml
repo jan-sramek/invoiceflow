@@ -56,8 +56,8 @@ spec:
                   key: password
             # Trailing dot: absolute FQDN so Java does not append search domains (ndots).
             - name: ConnectionStrings__Catalog
-              # Headless pod DNS (not ClusterIP): kube-proxy to ClusterIP has timed out on GHA k3d.
-              value: Host=postgres-0.postgres-headless.invoiceflow-infra.svc.cluster.local.;Database=invoiceflow_catalog;Username=catalog_app;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
+              # make app-up substitutes StatefulSet pod IPs (DNS/ClusterIP flaky on GHA k3d).
+              value: Host=${POSTGRES_HOST};Database=invoiceflow_catalog;Username=catalog_app;Password=$(CATALOG_PASSWORD);SSL Mode=Disable
             # Escape hatch for jobs without a user token; access tokens carry tenant_id
             - name: Tenancy__DevelopmentTenantId
               value: "${DEVELOPMENT_TENANT_ID}"
@@ -72,7 +72,7 @@ spec:
             - name: Authentication__RequireHttpsMetadata
               value: "false"
             - name: DocumentStorage__ServiceUrl
-              value: http://seaweedfs-0.seaweedfs-headless.invoiceflow-infra.svc.cluster.local.:8333
+              value: http://${SEAWEEDFS_HOST}:8333
             - name: DocumentStorage__Bucket
               value: invoiceflow-documents
             - name: DocumentStorage__AccessKey
@@ -86,7 +86,7 @@ spec:
                   name: document-storage
                   key: secret-key
             - name: RabbitMq__Host
-              value: rabbitmq-0.rabbitmq-headless.invoiceflow-infra.svc.cluster.local.
+              value: ${RABBITMQ_HOST}
             - name: RabbitMq__VirtualHost
               value: invoiceflow
             - name: RabbitMq__UserName
