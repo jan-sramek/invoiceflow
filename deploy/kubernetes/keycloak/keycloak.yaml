@@ -53,7 +53,8 @@ spec:
               value: local
             # Browser-facing issuer (TLS on the Traefik ingress)
             - name: KC_HOSTNAME
-              value: https://auth.invoiceflow.localhost:8080
+              # Host 8443 → Traefik 443 (TLS). App HTTP stays on 8080→80.
+              value: https://auth.invoiceflow.localhost:8443
             - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
               value: "true"
             # The admin console is not routed by the ingress, only reachable through make keycloak-admin

@@ -375,7 +375,7 @@ keycloak-up: keycloak-image ## Install Keycloak with the invoiceflow realm (run 
 		exit 1; \
 	fi
 	@./scripts/keycloak-users.sh
-	@echo "Sign-in: https://auth.invoiceflow.localhost:8080/realms/invoiceflow/account"
+	@echo "Sign-in: https://auth.invoiceflow.localhost:8443/realms/invoiceflow/account"
 	@echo "Trust the local CA once: make trust-local-ca"
 	@echo "Admin console: make keycloak-admin"
 	@echo "Persona passwords: kubectl -n $(INFRA_NS) get secret keycloak-users -o jsonpath='{.data.clerk}' | base64 -d"
