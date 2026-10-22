@@ -280,14 +280,15 @@ app-up: images db-migrate ## Build the images, migrate the databases and deploy 
 	@$(KUBECTL) -n $(APP_NS) create configmap web-config \
 		--from-file=config.json=deploy/kubernetes/app/web-config.json \
 		--dry-run=client -o yaml | $(KUBECTL) apply -f -
-	@# Prefer StatefulSet pod IPs: ClusterIP/DNS has timed out on GHA k3d even when pods are Ready.
+	@# Prefer pod IPs: ClusterIP/DNS has timed out on GHA k3d even when pods are Ready.
 	@postgres_host="$$($(KUBECTL) -n $(INFRA_NS) get pod postgres-0 -o jsonpath='{.status.podIP}')"; \
 		seaweedfs_host="$$($(KUBECTL) -n $(INFRA_NS) get pod seaweedfs-0 -o jsonpath='{.status.podIP}')"; \
 		rabbitmq_host="$$($(KUBECTL) -n $(INFRA_NS) get pod rabbitmq-0 -o jsonpath='{.status.podIP}')"; \
-		if [ -z "$$postgres_host" ] || [ -z "$$seaweedfs_host" ] || [ -z "$$rabbitmq_host" ]; then \
-			echo "Missing infra pod IP(s): postgres=$$postgres_host seaweedfs=$$seaweedfs_host rabbitmq=$$rabbitmq_host" >&2; exit 1; \
+		keycloak_host="$$($(KUBECTL) -n $(INFRA_NS) get pod -l app.kubernetes.io/name=keycloak -o jsonpath='{.items[0].status.podIP}')"; \
+		if [ -z "$$postgres_host" ] || [ -z "$$seaweedfs_host" ] || [ -z "$$rabbitmq_host" ] || [ -z "$$keycloak_host" ]; then \
+			echo "Missing infra pod IP(s): postgres=$$postgres_host seaweedfs=$$seaweedfs_host rabbitmq=$$rabbitmq_host keycloak=$$keycloak_host" >&2; exit 1; \
 		fi; \
-		echo "App infra hosts: postgres=$$postgres_host seaweedfs=$$seaweedfs_host rabbitmq=$$rabbitmq_host"; \
+		echo "App infra hosts: postgres=$$postgres_host seaweedfs=$$seaweedfs_host rabbitmq=$$rabbitmq_host keycloak=$$keycloak_host"; \
 		for manifest in deploy/kubernetes/app/*.yaml; do \
 			sed -e 's/$${IMAGE_TAG}/$(IMAGE_TAG)/g' \
 				-e 's|$${REGISTRY}|$(REGISTRY)|g' \
@@ -296,6 +297,7 @@ app-up: images db-migrate ## Build the images, migrate the databases and deploy 
 				-e 's|$${POSTGRES_HOST}|'"$$postgres_host"'|g' \
 				-e 's|$${SEAWEEDFS_HOST}|'"$$seaweedfs_host"'|g' \
 				-e 's|$${RABBITMQ_HOST}|'"$$rabbitmq_host"'|g' \
+				-e 's|$${KEYCLOAK_HOST}|'"$$keycloak_host"'|g' \
 				$$manifest; echo ---; \
 		done | $(KUBECTL) apply -f -
 	@$(KUBECTL) rollout status deployment/api --namespace $(APP_NS) --timeout 5m

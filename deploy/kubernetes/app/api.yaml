@@ -64,7 +64,7 @@ spec:
             - name: Authentication__DevelopmentUsers
               value: "false"
             - name: Authentication__Authority
-              value: http://keycloak.invoiceflow-infra.svc.cluster.local.:8080/realms/invoiceflow
+              value: http://${KEYCLOAK_HOST}:8080/realms/invoiceflow
             - name: Authentication__ValidIssuer
               value: https://auth.invoiceflow.localhost:8080/realms/invoiceflow
             - name: Authentication__Audience
