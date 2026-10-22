@@ -1,0 +1,102 @@
+# Daily dump of every Postgres database onto the host backup volume
+# (k3d mounts INVOICEFLOW_BACKUP_DIR at /var/backups/invoiceflow on all nodes).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: invoiceflow-infra
+  labels:
+    app.kubernetes.io/name: postgres-backup
+spec:
+  # Local demo cluster; pick a quiet hour. Override with kubectl patch if needed.
+  schedule: "17 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: postgres-backup
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 70
+            runAsGroup: 70
+            fsGroup: 70
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: backup
+              image: postgres:18.6-alpine3.24@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-superuser
+                      key: password
+                - name: PGHOST
+                  value: postgres.invoiceflow-infra.svc.cluster.local
+                - name: PGUSER
+                  value: postgres
+                - name: BACKUP_ROOT
+                  value: /var/backups/invoiceflow/postgres
+                - name: RETENTION_DAYS
+                  value: "7"
+              command:
+                - sh
+                - -c
+                - |
+                  set -euo pipefail
+                  mkdir -p "$BACKUP_ROOT"
+                  stamp=$(date -u +%Y%m%dT%H%M%SZ)
+                  work="$BACKUP_ROOT/$stamp"
+                  mkdir -p "$work"
+
+                  echo "Dumping globals and all databases to $work"
+                  pg_dumpall --clean --if-exists | gzip -c > "$work/all.sql.gz"
+
+                  # Per-database custom-format dumps for single-tenant restore drills.
+                  databases=$(psql -Atqc "SELECT datname FROM pg_database WHERE datallowconn AND NOT datistemplate ORDER BY 1")
+                  for db in $databases; do
+                    echo "Dumping $db"
+                    pg_dump --format=custom --file="$work/${db}.dump" "$db"
+                  done
+
+                  # Keep a pointer at the latest successful run for restore scripts.
+                  ln -sfn "$stamp" "$BACKUP_ROOT/latest"
+                  echo "Backup $stamp complete"
+
+                  # Retention: remove completed dump directories older than RETENTION_DAYS.
+                  find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -mtime +"$RETENTION_DAYS" -exec rm -rf {} +
+                  echo "Retention applied (keep ${RETENTION_DAYS}d)"
+              volumeMounts:
+                - name: backups
+                  mountPath: /var/backups/invoiceflow
+                - name: tmp
+                  mountPath: /tmp
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: "1"
+                  memory: 512Mi
+          volumes:
+            - name: backups
+              hostPath:
+                path: /var/backups/invoiceflow
+                type: DirectoryOrCreate
+            - name: tmp
+              emptyDir: {}

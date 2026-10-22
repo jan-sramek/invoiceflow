@@ -57,6 +57,7 @@ endif
 .PHONY: help up down doctor cluster-up cluster-down cluster-status ollama-up ollama-down ollama-check \
 	observability-up observability-down grafana-password dashboard-url telemetry-check dashboard-up dashboard-down \
 	postgres-up postgres-down postgres-password db-forward psql \
+	backup-up backup-down backup-now backup-list \
 	onprem-up onprem-down onprem-spike provision-tenant \
 	seaweedfs-up seaweedfs-down s3-credentials s3-forward s3-check images web-image \
 	app-up app-down app-check rabbitmq-up rabbitmq-down rabbitmq-password rabbitmq-ui \
@@ -87,6 +88,7 @@ doctor: ## Check that Docker and kubectl target the local environment only
 
 cluster-up: doctor ## Create the k3d cluster (no-op if it exists; override with K3D_CONFIG=…)
 	@mkdir -p "$(INVOICEFLOW_BACKUP_DIR)" "$(dir $(KUBECONFIG))"
+	@chmod 1777 "$(INVOICEFLOW_BACKUP_DIR)"
 	@if k3d cluster list $(CLUSTER) >/dev/null 2>&1; then \
 		echo "Cluster $(CLUSTER) already exists"; \
 	else \
@@ -197,6 +199,26 @@ db-forward: doctor ## Forward PostgreSQL to localhost:15432 (Ctrl+C to stop)
 
 psql: doctor ## Open psql as the superuser inside the PostgreSQL pod
 	@$(KUBECTL) exec -it postgres-0 --namespace $(INFRA_NS) -- psql -U postgres
+
+backup-up: doctor ## Install the daily Postgres backup CronJob (host volume under INVOICEFLOW_BACKUP_DIR)
+	@mkdir -p "$(INVOICEFLOW_BACKUP_DIR)/postgres"
+	@chmod 1777 "$(INVOICEFLOW_BACKUP_DIR)" "$(INVOICEFLOW_BACKUP_DIR)/postgres"
+	@$(KUBECTL) apply -f deploy/kubernetes/backup/postgres-backup-cronjob.yaml
+	@echo "CronJob postgres-backup installed. Host: $(INVOICEFLOW_BACKUP_DIR)/postgres"
+	@echo "Restore drill: docs/runbooks/backup-restore.md"
+
+backup-down: doctor ## Remove the Postgres backup CronJob (keeps host dump files)
+	@$(KUBECTL) delete -f deploy/kubernetes/backup/postgres-backup-cronjob.yaml --ignore-not-found
+
+backup-now: doctor ## Run one Postgres backup Job immediately
+	@$(KUBECTL) delete job/postgres-backup-manual --namespace $(INFRA_NS) --ignore-not-found
+	@$(KUBECTL) create job postgres-backup-manual --namespace $(INFRA_NS) --from=cronjob/postgres-backup
+	@$(KUBECTL) wait --for=condition=complete job/postgres-backup-manual --namespace $(INFRA_NS) --timeout 10m
+	@$(MAKE) --no-print-directory backup-list
+
+backup-list: ## List Postgres backup epochs on the host
+	@echo "Host backups under $(INVOICEFLOW_BACKUP_DIR)/postgres:"
+	@ls -la "$(INVOICEFLOW_BACKUP_DIR)/postgres" 2>/dev/null || echo "(none yet — run make backup-up && make backup-now)"
 
 # The tenant can only be registered once the catalog schema exists, hence two migrations
 db-up: images ## Create the catalog and the development tenant's database, then migrate both (run postgres-up first)
