@@ -38,7 +38,7 @@ spec:
             - --optimized
             - --import-realm
           env:
-            # make keycloak-up substitutes the postgres Service ClusterIP (avoids flaky pod DNS in CI).
+            # make keycloak-up substitutes the postgres-0 pod IP (avoids flaky DNS/ClusterIP on GHA k3d).
             - name: KC_DB_URL
               value: jdbc:postgresql://${POSTGRES_HOST}:5432/keycloak
             - name: KC_DB_USERNAME

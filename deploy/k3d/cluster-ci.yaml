@@ -43,6 +43,10 @@ options:
       - arg: --disable-network-policy
         nodeFilters:
           - server:*
+      # VXLAN/ClusterIP is flaky on GitHub Actions Docker; host-gw works on a single node.
+      - arg: --flannel-backend=host-gw
+        nodeFilters:
+          - server:*
   kubeconfig:
     updateDefaultKubeconfig: true
     switchCurrentContext: true
