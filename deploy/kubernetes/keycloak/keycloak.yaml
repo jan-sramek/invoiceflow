@@ -117,6 +117,9 @@ spec:
               mountPath: /tmp
             - name: data
               mountPath: /opt/keycloak/data
+            # kcadm writes kcadm.config here; root filesystem is read-only
+            - name: kcadm
+              mountPath: /opt/keycloak/.keycloak
             - name: realm-import
               mountPath: /opt/keycloak/data/import
               readOnly: true
@@ -124,6 +127,8 @@ spec:
         - name: tmp
           emptyDir: {}
         - name: data
+          emptyDir: {}
+        - name: kcadm
           emptyDir: {}
         - name: realm-import
           configMap:

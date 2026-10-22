@@ -11,10 +11,8 @@ admin_password() { "${app[@]}" get secret keycloak-admin -o jsonpath='{.data.pas
 
 pod="$("${app[@]}" get pod -l app.kubernetes.io/name=keycloak -o jsonpath='{.items[0].metadata.name}')"
 
-# Pod root is read-only; HOME=/tmp makes ~/.keycloak land on the writable emptyDir.
 kcadm() {
-  "${app[@]}" exec -i "$pod" -- \
-    env HOME=/tmp /opt/keycloak/bin/kcadm.sh "$@"
+  "${app[@]}" exec -i "$pod" -- /opt/keycloak/bin/kcadm.sh "$@"
 }
 
 # Authenticate against the master realm on the local loopback inside the pod
