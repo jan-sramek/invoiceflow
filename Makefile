@@ -350,8 +350,9 @@ keycloak-up: keycloak-image ## Install Keycloak with the invoiceflow realm (run 
 		echo "Keycloak JDBC host (postgres ClusterIP): $$postgres_host"; \
 		sed -e 's/$${KEYCLOAK_TAG}/$(KEYCLOAK_TAG)/g' \
 			-e 's|$${REGISTRY}|$(REGISTRY)|g' \
-			-e "s|$${POSTGRES_HOST}|$$postgres_host|g" \
-			deploy/kubernetes/keycloak/keycloak.yaml | $(KUBECTL) apply -f -
+			-e 's|$${POSTGRES_HOST}|'"$$postgres_host"'|g' \
+			deploy/kubernetes/keycloak/keycloak.yaml | $(KUBECTL) apply -f -; \
+		$(KUBECTL) -n $(INFRA_NS) get deploy keycloak -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="KC_DB_URL")].value}{"\n"}'
 	@if ! $(KUBECTL) rollout status deployment/keycloak --namespace $(INFRA_NS) --timeout 5m; then \
 		echo "Keycloak rollout failed; pod status:"; \
 		$(KUBECTL) get pods -n $(INFRA_NS) -l app.kubernetes.io/name=keycloak -o wide; \
