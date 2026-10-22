@@ -32,13 +32,17 @@ KEYCLOAK_ADMIN_PORT := 18080
 KEYCLOAK_TAG := $(shell git hash-object deploy/images/keycloak/Dockerfile | cut -c1-12)
 DASHBOARD_IMAGE := $(shell grep -o 'mcr.microsoft.com/dotnet/aspire-dashboard[^ ]*' deploy/observability/aspire-dashboard.yaml)
 DASHBOARD_TOKEN_PATTERN := login?t=[0-9a-f]*
-# Prefer 127.0.0.1 in CI: localhost often resolves to ::1, but k3d binds the registry to IPv4 only.
-ifeq ($(CI),true)
-REGISTRY ?= 127.0.0.1:5001
-else
+# Cluster image host (mirrored by k3d to the registry container). Always localhost so
+# nodes do not try to pull via their own 127.0.0.1 loopback.
 REGISTRY ?= localhost:5001
+# Host push address. In CI, localhost resolves to ::1 but k3d binds IPv4 only.
+ifeq ($(CI),true)
+PUSH_REGISTRY ?= 127.0.0.1:5001
+else
+PUSH_REGISTRY ?= $(REGISTRY)
 endif
 export REGISTRY
+export PUSH_REGISTRY
 APPS := Api Worker Migrator
 
 
@@ -235,15 +239,17 @@ s3-forward: doctor ## Forward the S3 API to localhost:18333 (Ctrl+C to stop)
 s3-check: doctor ## Upload, read and delete a test object through the S3 API
 	@./scripts/s3-check.sh $(S3_FORWARD_PORT)
 
-# CI: docker build+push (daemon reaches host-bound k3d registry). Local: buildx --push.
+# CI: docker build+push to PUSH_REGISTRY (IPv4). Deploy manifests still use REGISTRY=localhost:5001.
 images: doctor web-image ## Build the API, worker, migrator and web images and push them to the cluster registry
 ifeq ($(CI),true)
 	@for app in $(APPS); do \
-		image=$(REGISTRY)/invoiceflow-$$(echo $$app | tr '[:upper:]' '[:lower:]'):$(IMAGE_TAG); \
+		name=invoiceflow-$$(echo $$app | tr '[:upper:]' '[:lower:]'); \
+		push=$(PUSH_REGISTRY)/$$name:$(IMAGE_TAG); \
+		cluster=$(REGISTRY)/$$name:$(IMAGE_TAG); \
 		docker build --file src/InvoiceFlow.$$app/Dockerfile \
-			--build-arg SOURCE_REVISION=$$(git rev-parse HEAD) --tag $$image . || exit 1; \
-		docker push $$image || exit 1; \
-		echo "Pushed $$image"; \
+			--build-arg SOURCE_REVISION=$$(git rev-parse HEAD) --tag $$push --tag $$cluster . || exit 1; \
+		docker push $$push || exit 1; \
+		echo "Pushed $$push (cluster pulls $$cluster)"; \
 	done
 else
 	@for app in $(APPS); do \
@@ -256,10 +262,11 @@ endif
 
 web-image: doctor ## Build the Angular web image and push it to the cluster registry
 ifeq ($(CI),true)
-	@image=$(REGISTRY)/invoiceflow-web:$(IMAGE_TAG); \
-		docker build --file web/invoiceflow-web/Dockerfile --tag $$image web/invoiceflow-web && \
-		docker push $$image && \
-		echo "Pushed $$image"
+	@push=$(PUSH_REGISTRY)/invoiceflow-web:$(IMAGE_TAG); \
+		cluster=$(REGISTRY)/invoiceflow-web:$(IMAGE_TAG); \
+		docker build --file web/invoiceflow-web/Dockerfile --tag $$push --tag $$cluster web/invoiceflow-web && \
+		docker push $$push && \
+		echo "Pushed $$push (cluster pulls $$cluster)"
 else
 	@image=$(REGISTRY)/invoiceflow-web:$(IMAGE_TAG); \
 		docker buildx build --quiet --push --file web/invoiceflow-web/Dockerfile \
@@ -321,12 +328,15 @@ rabbitmq-ui: doctor ## Forward the RabbitMQ management UI to localhost:15672 (Ct
 
 keycloak-image: doctor ## Build the Keycloak image and push it to the cluster registry
 ifeq ($(CI),true)
-	@docker build --tag $(REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG) deploy/images/keycloak
-	@docker push $(REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG)
+	@docker build \
+		--tag $(PUSH_REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG) \
+		--tag $(REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG) \
+		deploy/images/keycloak
+	@docker push $(PUSH_REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG)
 else
 	@docker buildx build --quiet --push --tag $(REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG) deploy/images/keycloak >/dev/null
 endif
-	@echo "Pushed $(REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG)"
+	@echo "Pushed $(PUSH_REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG) (cluster pulls $(REGISTRY)/…)"
 
 keycloak-up: keycloak-image ## Install Keycloak with the invoiceflow realm (run postgres-up first)
 	@./scripts/create-local-secrets.sh
@@ -337,7 +347,13 @@ keycloak-up: keycloak-image ## Install Keycloak with the invoiceflow realm (run 
 		--dry-run=client -o yaml | $(KUBECTL) apply -f -
 	@sed -e 's/$${KEYCLOAK_TAG}/$(KEYCLOAK_TAG)/g' -e 's|$${REGISTRY}|$(REGISTRY)|g' \
 		deploy/kubernetes/keycloak/keycloak.yaml | $(KUBECTL) apply -f -
-	@$(KUBECTL) rollout status deployment/keycloak --namespace $(INFRA_NS) --timeout 5m
+	@if ! $(KUBECTL) rollout status deployment/keycloak --namespace $(INFRA_NS) --timeout 5m; then \
+		echo "Keycloak rollout failed; pod status:"; \
+		$(KUBECTL) get pods -n $(INFRA_NS) -l app.kubernetes.io/name=keycloak -o wide; \
+		$(KUBECTL) describe pods -n $(INFRA_NS) -l app.kubernetes.io/name=keycloak | tail -n 80; \
+		$(KUBECTL) logs -n $(INFRA_NS) -l app.kubernetes.io/name=keycloak --tail=80 || true; \
+		exit 1; \
+	fi
 	@./scripts/keycloak-users.sh
 	@echo "Sign-in: https://auth.invoiceflow.localhost:8080/realms/invoiceflow/account"
 	@echo "Trust the local CA once: make trust-local-ca"

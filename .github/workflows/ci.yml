@@ -130,8 +130,9 @@ jobs:
       KUBECONFIG: ${{ github.workspace }}/.kube/config
       INVOICEFLOW_BACKUP_DIR: ${{ github.workspace }}/.local/share/invoiceflow/backups
       IMAGE_TAG: ${{ github.sha }}
-      # IPv4 only — localhost:5001 resolves to [::1] on the runner; k3d listens on 127.0.0.1
-      REGISTRY: 127.0.0.1:5001
+      # Push over IPv4; cluster still pulls localhost:5001 (k3d registry mirror).
+      PUSH_REGISTRY: 127.0.0.1:5001
+      REGISTRY: localhost:5001
       # Fake extractor — no Ollama in CI
       DOCUMENT_EXTRACTION_SERVICE_URL: ""
     steps:
