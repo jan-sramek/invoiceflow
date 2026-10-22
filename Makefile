@@ -235,19 +235,37 @@ s3-forward: doctor ## Forward the S3 API to localhost:18333 (Ctrl+C to stop)
 s3-check: doctor ## Upload, read and delete a test object through the S3 API
 	@./scripts/s3-check.sh $(S3_FORWARD_PORT)
 
+# CI: docker build+push (daemon reaches host-bound k3d registry). Local: buildx --push.
 images: doctor web-image ## Build the API, worker, migrator and web images and push them to the cluster registry
+ifeq ($(CI),true)
+	@for app in $(APPS); do \
+		image=$(REGISTRY)/invoiceflow-$$(echo $$app | tr '[:upper:]' '[:lower:]'):$(IMAGE_TAG); \
+		docker build --file src/InvoiceFlow.$$app/Dockerfile \
+			--build-arg SOURCE_REVISION=$$(git rev-parse HEAD) --tag $$image . || exit 1; \
+		docker push $$image || exit 1; \
+		echo "Pushed $$image"; \
+	done
+else
 	@for app in $(APPS); do \
 		image=$(REGISTRY)/invoiceflow-$$(echo $$app | tr '[:upper:]' '[:lower:]'):$(IMAGE_TAG); \
 		docker buildx build --quiet --push --file src/InvoiceFlow.$$app/Dockerfile \
 			--build-arg SOURCE_REVISION=$$(git rev-parse HEAD) --tag $$image . >/dev/null || exit 1; \
 		echo "Pushed $$image"; \
 	done
+endif
 
 web-image: doctor ## Build the Angular web image and push it to the cluster registry
+ifeq ($(CI),true)
+	@image=$(REGISTRY)/invoiceflow-web:$(IMAGE_TAG); \
+		docker build --file web/invoiceflow-web/Dockerfile --tag $$image web/invoiceflow-web && \
+		docker push $$image && \
+		echo "Pushed $$image"
+else
 	@image=$(REGISTRY)/invoiceflow-web:$(IMAGE_TAG); \
 		docker buildx build --quiet --push --file web/invoiceflow-web/Dockerfile \
 			--tag $$image web/invoiceflow-web >/dev/null || exit 1; \
 		echo "Pushed $$image"
+endif
 
 app-up: images db-migrate ## Build the images, migrate the databases and deploy the API, worker and web
 	@./scripts/create-local-secrets.sh
@@ -302,7 +320,12 @@ rabbitmq-ui: doctor ## Forward the RabbitMQ management UI to localhost:15672 (Ct
 	@$(KUBECTL) port-forward service/rabbitmq $(RABBITMQ_UI_PORT):15672 --namespace $(INFRA_NS)
 
 keycloak-image: doctor ## Build the Keycloak image and push it to the cluster registry
+ifeq ($(CI),true)
+	@docker build --tag $(REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG) deploy/images/keycloak
+	@docker push $(REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG)
+else
 	@docker buildx build --quiet --push --tag $(REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG) deploy/images/keycloak >/dev/null
+endif
 	@echo "Pushed $(REGISTRY)/invoiceflow-keycloak:$(KEYCLOAK_TAG)"
 
 keycloak-up: keycloak-image ## Install Keycloak with the invoiceflow realm (run postgres-up first)
