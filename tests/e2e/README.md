@@ -24,6 +24,42 @@ In CI, the **Playwright e2e (k3d)** job creates a single-node k3d cluster, deplo
 
 Each run appends a unique comment to the PDF, so repeated runs never end up as duplicates of each other.
 
+## Workflow test
+
+`tests/workflow.spec.ts` (tagged `@workflow`) extends smoke with a multi-persona path:
+
+1. **Clara Clerk** uploads a unique PDF and opens the new invoice;
+2. waits for **Needs review** (fake extractor finished — see below);
+3. fills required fields, saves, and **Submits for approval**;
+4. **Adam Approver** approves;
+5. **Fiona Finance** marks the invoice **Paid**;
+6. asserts **Paid** on the list and detail.
+
+CI does **not** run this test (`make e2e-ci` keeps `@smoke` only). Run it on demand like accessibility:
+
+```sh
+make e2e-workflow   # sets E2E_CLERK_PASSWORD, E2E_APPROVER_PASSWORD, E2E_FINANCE_PASSWORD from keycloak-users
+```
+
+On Windows local dev (`ng serve`), set the three `E2E_*_PASSWORD` variables only when using Keycloak; otherwise the development **Acting as** switcher is used (personas switch without OIDC sign-out).
+
+### Fake extractor and statuses
+
+When `DocumentExtraction:ServiceUrl` is empty (CI, `make e2e-ci`, default local stack without Ollama), the worker uses **FakeInvoiceExtractor**:
+
+| Step | Invoice status | Notes |
+|------|----------------|--------|
+| Upload completes | `Uploaded` | API returns; upload queue shows “Uploaded”. |
+| Worker picks message | `Processing` | `StartProcessing`. |
+| Fake extract succeeds (default: no delay, no failures) | `NeedsReview` | `RequireReview` then `ApplyExtraction` with **empty** fields. |
+| Clerk saves fields + submit | `PendingApproval` | Submit requires supplier, invoice number, date, currency, total. |
+| Approver approves | `Approved` | Approver must differ from submitter. |
+| Finance marks paid | `Paid` | Payment dialog (date + reference). |
+
+Configured failures (`FakeExtractor:FailureRate` / `Delay`) can leave invoices in `Processing`, `ExtractionFailed`, or retry loops — not used in CI defaults.
+
+**Flakiness:** extraction is async (RabbitMQ + worker). The workflow test polls the detail page for up to 90s per status transition. Slow clusters or elevated fake delay may need a longer Playwright timeout (the spec uses 180s).
+
 ## Run it (macOS / Colima)
 
 ```sh
@@ -71,6 +107,9 @@ npm start
 cd tests/e2e
 $env:BASE_URL = "http://localhost:4200"
 npm run test:smoke
+
+# optional full workflow (dev persona switcher; no Keycloak passwords needed)
+npm run test:workflow
 ```
 
 Without a working catalog/tenant database, upload will fail even if the UI loads.

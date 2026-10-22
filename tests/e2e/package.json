@@ -13,6 +13,7 @@
     "test": "playwright test",
     "test:smoke": "playwright test --grep @smoke",
     "test:a11y": "playwright test --grep @a11y",
+    "test:workflow": "playwright test --grep @workflow",
     "report": "playwright show-report"
   },
   "devDependencies": {

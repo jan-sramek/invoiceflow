@@ -66,7 +66,7 @@ endif
 	app-up app-down app-check rabbitmq-up rabbitmq-down rabbitmq-password rabbitmq-ui \
 	keycloak-image keycloak-up keycloak-down keycloak-password keycloak-admin trust-local-ca \
 	db-up db-migrate db-down stack-up rotation-drill \
-	e2e-install e2e-typecheck e2e-smoke e2e-a11y e2e-ci \
+	e2e-install e2e-typecheck e2e-smoke e2e-a11y e2e-workflow e2e-ci \
 	k6-smoke
 
 help:
@@ -450,6 +450,12 @@ e2e-smoke: ## Upload an invoice through the app in the cluster and check it is l
 e2e-a11y: ## Run Playwright axe-core checks (@a11y; not part of e2e-ci). BASE_URL overrides the address.
 	@E2E_CLERK_PASSWORD="$$($(KUBECTL) get secret keycloak-users --namespace $(INFRA_NS) -o jsonpath='{.data.clerk}' | base64 -d)" \
 		npm run test:a11y --prefix tests/e2e
+
+e2e-workflow: ## Full clerk→submit→approve→paid path (@workflow; not part of e2e-ci). BASE_URL overrides the address.
+	@E2E_CLERK_PASSWORD="$$($(KUBECTL) get secret keycloak-users --namespace $(INFRA_NS) -o jsonpath='{.data.clerk}' | base64 -d)" \
+	E2E_APPROVER_PASSWORD="$$($(KUBECTL) get secret keycloak-users --namespace $(INFRA_NS) -o jsonpath='{.data.approver}' | base64 -d)" \
+	E2E_FINANCE_PASSWORD="$$($(KUBECTL) get secret keycloak-users --namespace $(INFRA_NS) -o jsonpath='{.data.finance}' | base64 -d)" \
+		npm run test:workflow --prefix tests/e2e
 
 # GitHub Actions: single-node k3d, fake extractor (no Ollama), Playwright @smoke against the ingress.
 e2e-ci: ## Create the CI cluster, deploy the stack with the fake extractor, and run e2e smoke
