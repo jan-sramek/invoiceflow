@@ -345,13 +345,24 @@ keycloak-up: keycloak-image ## Install Keycloak with the invoiceflow realm (run 
 	@$(KUBECTL) -n $(INFRA_NS) create configmap keycloak-realm \
 		--from-file=invoiceflow-realm.json=deploy/keycloak/invoiceflow-realm.json \
 		--dry-run=client -o yaml | $(KUBECTL) apply -f -
-	@sed -e 's/$${KEYCLOAK_TAG}/$(KEYCLOAK_TAG)/g' -e 's|$${REGISTRY}|$(REGISTRY)|g' \
-		deploy/kubernetes/keycloak/keycloak.yaml | $(KUBECTL) apply -f -
+	@postgres_host="$$($(KUBECTL) -n $(INFRA_NS) get svc postgres -o jsonpath='{.spec.clusterIP}')"; \
+		if [ -z "$$postgres_host" ]; then echo "postgres Service has no ClusterIP" >&2; exit 1; fi; \
+		echo "Keycloak JDBC host (postgres ClusterIP): $$postgres_host"; \
+		sed -e 's/$${KEYCLOAK_TAG}/$(KEYCLOAK_TAG)/g' \
+			-e 's|$${REGISTRY}|$(REGISTRY)|g' \
+			-e "s|$${POSTGRES_HOST}|$$postgres_host|g" \
+			deploy/kubernetes/keycloak/keycloak.yaml | $(KUBECTL) apply -f -
 	@if ! $(KUBECTL) rollout status deployment/keycloak --namespace $(INFRA_NS) --timeout 5m; then \
 		echo "Keycloak rollout failed; pod status:"; \
 		$(KUBECTL) get pods -n $(INFRA_NS) -l app.kubernetes.io/name=keycloak -o wide; \
 		$(KUBECTL) describe pods -n $(INFRA_NS) -l app.kubernetes.io/name=keycloak | tail -n 80; \
 		$(KUBECTL) logs -n $(INFRA_NS) -l app.kubernetes.io/name=keycloak --tail=80 || true; \
+		echo "DNS check from a throwaway pod:"; \
+		$(KUBECTL) -n $(INFRA_NS) delete pod dns-check --ignore-not-found >/dev/null 2>&1; \
+		$(KUBECTL) -n $(INFRA_NS) run dns-check --restart=Never --image=busybox:1.37 \
+			--command -- getent hosts postgres postgres.invoiceflow-infra.svc.cluster.local || true; \
+		$(KUBECTL) -n $(INFRA_NS) logs dns-check 2>/dev/null || true; \
+		$(KUBECTL) -n $(INFRA_NS) delete pod dns-check --ignore-not-found >/dev/null 2>&1; \
 		exit 1; \
 	fi
 	@./scripts/keycloak-users.sh

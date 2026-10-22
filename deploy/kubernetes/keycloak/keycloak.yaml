@@ -38,9 +38,9 @@ spec:
             - --optimized
             - --import-realm
           env:
-            # Same namespace as the postgres Service — short name avoids Java FQDN/ndots failures.
+            # make keycloak-up substitutes the postgres Service ClusterIP (avoids flaky pod DNS in CI).
             - name: KC_DB_URL
-              value: jdbc:postgresql://postgres:5432/keycloak
+              value: jdbc:postgresql://${POSTGRES_HOST}:5432/keycloak
             - name: KC_DB_USERNAME
               value: keycloak
             - name: KC_DB_PASSWORD
