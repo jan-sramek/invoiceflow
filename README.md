@@ -47,3 +47,19 @@ Postgres dumps land on the host under `INVOICEFLOW_BACKUP_DIR` (k3d mounts that 
 ## End-to-end tests
 
 Playwright smoke tests live in [`tests/e2e`](tests/e2e). CI runs them on a single-node k3d cluster with the fake extractor (`make e2e-ci` / job **Playwright e2e (k3d)**). On macOS against a local cluster: `make e2e-install`, then `make e2e-smoke`. On Windows against local `ng serve`, see [`tests/e2e/README.md`](tests/e2e/README.md).
+
+## Architecture note
+
+Manifests live under [`deploy/kubernetes`](deploy/kubernetes) (app, Postgres, SeaweedFS, RabbitMQ, Keycloak, backup CronJob, on-prem spike). `make stack-up` targets a local k3d cluster with Traefik ingress; workloads split across `invoiceflow` and `invoiceflow-infra`. Invoice PDFs go to SeaweedFS; processing is driven by the transactional outbox → RabbitMQ → worker path described above.
+
+## Known limitations
+
+Demo and local-dev constraints only — not a production readiness statement.
+
+- **Cluster tooling:** Full stack (`make doctor`, `make stack-up`, on-prem drills) expects macOS + Colima + k3d. Windows can run the API, Angular, and Playwright against local services; Colima/k3d stack-up is not supported yet ([`tests/e2e/README.md`](tests/e2e/README.md)).
+- **k3d storage:** Dev cluster is k3d on Docker; CI uses a single-server k3d layout ([`deploy/k3d/cluster-ci.yaml`](deploy/k3d/cluster-ci.yaml)). Stateful data (Postgres, SeaweedFS, RabbitMQ) lives in cluster volumes — not HA and not portable across machines without your own migration.
+- **Backups:** Postgres dumps only, on the host via `INVOICEFLOW_BACKUP_DIR` / k3d mount — no off-cluster copy. SeaweedFS and RabbitMQ are **not** included in the backup CronJob; on-prem tenant Postgres is outside the in-cluster dump. See [`docs/runbooks/backup-restore.md`](docs/runbooks/backup-restore.md).
+- **Network policies:** k3d disables the network policy controller (`--disable-network-policy` in [`deploy/k3d/cluster.yaml`](deploy/k3d/cluster.yaml)) so Docker IP churn does not break the cluster. Kubernetes NetworkPolicies in-repo are not enforced on this stack.
+- **Extraction:** Without `DocumentExtraction:ServiceUrl`, the worker uses the **fake extractor** (local Windows, tests, CI). Text-layer PDFs only; scans fail with `extraction.no_text_layer` — **OCR / scanned PDFs are Stage 9** ([`docs/error-codes.md`](docs/error-codes.md)).
+- **On-prem tenant DB (Stage 6):** Simulates a client Postgres on the Docker/Colima host (EndpointSlice to the host), not a real remote site. `make onprem-up` is out of scope on Windows.
+- **Security checklist:** [`docs/security/asvs-checklist.md`](docs/security/asvs-checklist.md) is a manual ASVS 5.0 L2 review artefact, not automated certification.
