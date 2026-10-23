@@ -69,4 +69,58 @@ public class ExtractedFieldAssessorTests
         statuses.TotalAmount.ShouldBe(FieldStatus.Invalid);
     }
 
+    [Fact]
+    public void Assess_EnglishMonthNameAndDollarSign_AreValid()
+    {
+        var fields = new InvoiceFields
+        {
+            SupplierName = SupplierName.Create("DEMO"),
+            InvoiceNumber = InvoiceNumber.Create("INV-3337"),
+            InvoiceDate = new DateOnly(2016, 1, 25),
+            DueDate = new DateOnly(2016, 1, 31),
+            Currency = CurrencyCode.Create("USD"),
+            Subtotal = 85.00m,
+            TaxAmount = 8.50m,
+            TotalAmount = 93.50m,
+        };
+        const string Source =
+            "Invoice DateJanuary 25, 2016Due DateJanuary 31, 2016Total Due$93.50 Sub Total$85.00Tax$8.50Total$93.50";
+
+        InvoiceFieldStatuses statuses = ExtractedFieldAssessor.Assess(fields, Source, Today);
+
+        statuses.InvoiceDate.ShouldBe(FieldStatus.Valid);
+        statuses.DueDate.ShouldBe(FieldStatus.Valid);
+        statuses.Currency.ShouldBe(FieldStatus.Valid);
+        statuses.Subtotal.ShouldBe(FieldStatus.Valid);
+        statuses.TaxAmount.ShouldBe(FieldStatus.Valid);
+        statuses.TotalAmount.ShouldBe(FieldStatus.Valid);
+    }
+}
+
+public class DocumentFieldHintsTests
+{
+    [Fact]
+    public void Enrich_SlicedInvoicesSample_CorrectsSubtotalTaxTotal()
+    {
+        // Real PdfPig text: line-item "Sub Total1.00" (qty) appears before summary "Sub Total$85.00".
+        const string Source =
+            "Invoice DateJanuary 25, 2016Due DateJanuary 31, 2016Total Due$93.50"
+            + "Hrs/QtyServiceRate/PriceAdjustSub Total1.00Web DesignThis is a sample description..."
+            + "$85.000.00%$85.00Sub Total$85.00Tax$8.50Total$93.50";
+
+        var wrong = new InvoiceFields
+        {
+            Subtotal = 93.50m,
+            TaxAmount = 8.50m,
+            TotalAmount = 93.50m,
+            Currency = null,
+        };
+
+        InvoiceFields enriched = DocumentFieldHints.Enrich(wrong, Source);
+
+        enriched.Subtotal.ShouldBe(85.00m);
+        enriched.TaxAmount.ShouldBe(8.50m);
+        enriched.TotalAmount.ShouldBe(93.50m);
+        enriched.Currency!.Value.ShouldBe("USD");
+    }
 }

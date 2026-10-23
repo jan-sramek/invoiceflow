@@ -96,7 +96,7 @@ describe('InvoiceDetailPageComponent', () => {
 
     expect(root.querySelector('h1')?.textContent).toContain('Acme s.r.o.');
     expect(input('supplierName').value).toBe('Acme s.r.o.');
-    expect(input('totalAmount').value).toBe('121');
+    expect(input('totalAmount').value).toBe('121.00');
     expect(input('supplierName').readOnly).toBeFalse();
     expect(button('Submit for approval')).toBeDefined();
     expect(button('Cancel invoice')).toBeDefined();

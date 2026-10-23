@@ -25,11 +25,27 @@ import { FieldErrorLike, applyFieldErrors } from '@shared/util';
 import { filter } from 'rxjs';
 import { InvoiceDetailStore } from '../data-access';
 import { AuditTimelineComponent, InvoiceFlagsComponent, InvoiceStatusChipComponent } from '../ui';
+import { formatAmountInput, parseAmountInput } from '../util';
 import { PaymentDialogComponent, PaymentDialogResult } from './payment-dialog.component';
 
 type FieldsFormValue = ReturnType<typeof toFormValue>;
+type FieldKey = keyof InvoiceFieldsDto;
 
 const EMPTY_FORM_VALUE = toFormValue(null);
+
+const FIELD_KEYS = [
+  'supplierName',
+  'invoiceNumber',
+  'invoiceDate',
+  'dueDate',
+  'currency',
+  'subtotal',
+  'taxAmount',
+  'totalAmount',
+  'purchaseOrderReference',
+] as const satisfies readonly FieldKey[];
+
+const PROBLEM_STATUSES: ReadonlySet<FieldStatus> = new Set(['Missing', 'Invalid', 'Unverified']);
 
 @Component({
   selector: 'if-invoice-detail-page',
@@ -72,9 +88,10 @@ export class InvoiceDetailPageComponent {
     invoiceDate: [''],
     dueDate: [''],
     currency: ['', [Validators.maxLength(3)]],
-    subtotal: [null as number | null],
-    taxAmount: [null as number | null],
-    totalAmount: [null as number | null],
+    // Text + inputmode so cs/de users can type 93,50; parsed to numbers on save.
+    subtotal: [''],
+    taxAmount: [''],
+    totalAmount: [''],
     purchaseOrderReference: [''],
   });
 
@@ -92,14 +109,29 @@ export class InvoiceDetailPageComponent {
   });
   protected readonly notFound = computed(() => this.store.loadError()?.status === 404);
 
-  protected fieldStatus(field: keyof InvoiceFieldsDto): FieldStatus | null {
+  protected fieldStatus(field: FieldKey): FieldStatus | null {
     const statuses = this.store.invoice()?.fieldStatuses;
     return statuses ? statuses[field] : null;
   }
 
+  /** Missing / Invalid / Unverified — shown as field errors and listed in the summary banner. */
   protected showFieldStatus(status: FieldStatus | null): boolean {
-    return status === 'Invalid' || status === 'Unverified';
+    return status !== null && PROBLEM_STATUSES.has(status);
   }
+
+  /** Named fields that still need attention after extraction (or before submit). */
+  protected readonly statusIssues = computed(() => {
+    const statuses = this.store.invoice()?.fieldStatuses;
+    if (!statuses) {
+      return [] as const;
+    }
+    return FIELD_KEYS.filter((field) => PROBLEM_STATUSES.has(statuses[field])).map((field) => ({
+      field,
+      status: statuses[field],
+      labelKey: `invoices.fields.${field}`,
+      statusKey: `invoices.fieldStatus.${statuses[field]}`,
+    }));
+  });
 
   constructor() {
     this.store.load(this.id);
@@ -195,9 +227,9 @@ function toFormValue(fields: InvoiceFieldsDto | null) {
     invoiceDate: fields?.invoiceDate ?? '',
     dueDate: fields?.dueDate ?? '',
     currency: fields?.currency ?? '',
-    subtotal: fields?.subtotal ?? null,
-    taxAmount: fields?.taxAmount ?? null,
-    totalAmount: fields?.totalAmount ?? null,
+    subtotal: formatAmountInput(fields?.subtotal),
+    taxAmount: formatAmountInput(fields?.taxAmount),
+    totalAmount: formatAmountInput(fields?.totalAmount),
     purchaseOrderReference: fields?.purchaseOrderReference ?? '',
   };
 }
@@ -211,9 +243,10 @@ function toInput(value: FieldsFormValue): InvoiceFieldsInput {
     invoiceDate: value.invoiceDate || null,
     dueDate: value.dueDate || null,
     currency: text(value.currency)?.toUpperCase() ?? null,
-    subtotal: value.subtotal,
-    taxAmount: value.taxAmount,
-    totalAmount: value.totalAmount,
+    subtotal: parseAmountInput(value.subtotal),
+    taxAmount: parseAmountInput(value.taxAmount),
+    totalAmount: parseAmountInput(value.totalAmount),
     purchaseOrderReference: text(value.purchaseOrderReference),
   };
 }
+

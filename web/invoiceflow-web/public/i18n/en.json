@@ -170,7 +170,7 @@
     "fieldStatus": {
       "Missing": "Missing",
       "Valid": "Looks good",
-      "Invalid": "Fails a validation rule — please correct",
+      "Invalid": "Does not satisfy a check (for example total ≠ net + VAT) — correct this field",
       "Unverified": "Not found in the document text — please confirm"
     },
     "actions": {
@@ -230,6 +230,7 @@
       "duplicateHint": "An invoice with the same file already exists.",
       "viewOriginal": "View the original",
       "fieldsHeading": "Invoice details",
+      "fieldsNeedAttention": "These fields need attention before you can submit:",
       "language": "Document language",
       "readOnly": "These fields can no longer be edited in this status.",
       "unsaved": "Unsaved changes",

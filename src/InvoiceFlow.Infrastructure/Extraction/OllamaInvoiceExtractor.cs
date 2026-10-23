@@ -21,7 +21,11 @@ internal sealed partial class OllamaInvoiceExtractor(
         Reply with a single JSON object only. Keys: supplierName, invoiceNumber, invoiceDate (yyyy-MM-dd),
         dueDate (yyyy-MM-dd), currency (ISO 4217), subtotal, taxAmount, totalAmount, purchaseOrderReference,
         documentLanguage (BCP 47 / ISO 639 language tag such as en, cs, de, fr, pl, zh-Hans; any language).
-        Use null for unknown values.
+        Use null for unknown values. Amounts must be JSON numbers with a dot decimal (e.g. 93.50), never currency
+        symbols, thousands separators, or comma decimals. Keep cents when the document shows them.
+        subtotal is the net / sub-total before tax (not the grand total). taxAmount is VAT/tax only.
+        totalAmount is the final amount due. invoiceDate/dueDate must be yyyy-MM-dd even when the PDF uses
+        month names (e.g. January 25, 2016 → 2016-01-25). currency is ISO 4217 (USD when the PDF uses $).
 
         Document text:
         """;
@@ -79,7 +83,9 @@ internal sealed partial class OllamaInvoiceExtractor(
             return null;
         }
 
-        InvoiceFields fields = InvoiceExtractionJson.Parse(body.Response);
+        InvoiceFields fields = DocumentFieldHints.Enrich(
+            InvoiceExtractionJson.Parse(body.Response),
+            documentText);
         string? language = InvoiceExtractionJson.TryLanguage(body.Response);
         return new ParsedExtraction(fields, language);
     }

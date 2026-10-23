@@ -91,6 +91,16 @@
     list-style: none;
   }
 
+  .banner-title {
+    margin: 0 0 4px;
+    font-weight: 600;
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 1.2em;
+  }
+
   a {
     color: inherit;
     font-weight: 600;
@@ -144,6 +154,18 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: var(--if-space-4);
+
+  // Extraction / readiness status: red outline + hint so the field is obvious (not a muted grey note).
+  .field-issue {
+    --mdc-outlined-text-field-outline-color: var(--if-status-danger-fg);
+    --mdc-outlined-text-field-hover-outline-color: var(--if-status-danger-fg);
+    --mdc-outlined-text-field-focus-outline-color: var(--if-status-danger-fg);
+    --mdc-outlined-text-field-label-text-color: var(--if-status-danger-fg);
+  }
+
+  .field-issue-hint {
+    color: var(--if-status-danger-fg) !important;
+  }
 
   .span-2 {
     grid-column: 1 / -1;

@@ -55,25 +55,24 @@ internal static class ExtractedFieldAssessor
 
     private static bool IsGrounded(string haystack, string? display, DateOnly? date, decimal? amount)
     {
-        if (!string.IsNullOrWhiteSpace(display) && haystack.Contains(Normalize(display), StringComparison.Ordinal))
+        if (!string.IsNullOrWhiteSpace(display))
         {
-            return true;
-        }
-
-        if (date is { } d)
-        {
-            string[] forms =
-            [
-                d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                d.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture),
-                d.ToString("d.M.yyyy", CultureInfo.InvariantCulture),
-                d.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
-                d.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture),
-            ];
-            if (forms.Any(form => haystack.Contains(Normalize(form), StringComparison.Ordinal)))
+            string needle = Normalize(display);
+            if (haystack.Contains(needle, StringComparison.Ordinal))
             {
                 return true;
             }
+
+            // ISO currency codes often appear only as symbols ($ / € / £ / Kč).
+            if (CurrencySymbolGrounds(needle, haystack))
+            {
+                return true;
+            }
+        }
+
+        if (date is { } d && DateForms(d).Any(form => haystack.Contains(Normalize(form), StringComparison.Ordinal)))
+        {
+            return true;
         }
 
         if (amount is { } value)
@@ -93,6 +92,38 @@ internal static class ExtractedFieldAssessor
         }
 
         return false;
+    }
+
+    private static bool CurrencySymbolGrounds(string currencyCode, string haystack) =>
+        currencyCode switch
+        {
+            "usd" => haystack.Contains('$') || haystack.Contains("usd", StringComparison.Ordinal),
+            "eur" => haystack.Contains('€') || haystack.Contains("eur", StringComparison.Ordinal),
+            "gbp" => haystack.Contains('£') || haystack.Contains("gbp", StringComparison.Ordinal),
+            "czk" => haystack.Contains("kč", StringComparison.Ordinal)
+                || haystack.Contains("czk", StringComparison.Ordinal)
+                || haystack.Contains("kc", StringComparison.Ordinal),
+            _ => false,
+        };
+
+    private static IEnumerable<string> DateForms(DateOnly d)
+    {
+        var en = CultureInfo.GetCultureInfo("en-US");
+        var cs = CultureInfo.GetCultureInfo("cs-CZ");
+        var de = CultureInfo.GetCultureInfo("de-DE");
+        yield return d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        yield return d.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
+        yield return d.ToString("d.M.yyyy", CultureInfo.InvariantCulture);
+        yield return d.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+        yield return d.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture);
+        yield return d.ToString("d/M/yyyy", CultureInfo.InvariantCulture);
+        // "January 25, 2016" / "25 January 2016" (common English invoice PDFs)
+        yield return d.ToString("MMMM d, yyyy", en);
+        yield return d.ToString("MMMM dd, yyyy", en);
+        yield return d.ToString("d MMMM yyyy", en);
+        yield return d.ToString("dd MMMM yyyy", en);
+        yield return d.ToString("d. MMMM yyyy", cs);
+        yield return d.ToString("d. MMMM yyyy", de);
     }
 
     private static string Normalize(string text)

@@ -170,7 +170,7 @@
     "fieldStatus": {
       "Missing": "Chybí",
       "Valid": "V pořádku",
-      "Invalid": "Nesplňuje pravidlo — opravte hodnotu",
+      "Invalid": "Nesplňuje kontrolu (např. součet ≠ základ + DPH) — opravte toto pole",
       "Unverified": "Nenalezeno v textu dokumentu — potvrďte"
     },
     "actions": {
@@ -230,6 +230,7 @@
       "duplicateHint": "Faktura se stejným souborem již existuje.",
       "viewOriginal": "Zobrazit původní",
       "fieldsHeading": "Údaje faktury",
+      "fieldsNeedAttention": "Tato pole je potřeba upravit před odesláním:",
       "language": "Jazyk dokumentu",
       "readOnly": "V tomto stavu už nelze pole upravovat.",
       "unsaved": "Neuložené změny",

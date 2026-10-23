@@ -29,21 +29,23 @@ public sealed record Money
 
     internal static decimal ValidAmount(decimal amount)
     {
-        if (decimal.Round(amount, MaxDecimals) != amount)
+        // Round tiny binary/JSON noise to money scale; reject values that clearly use more than 2 dp.
+        decimal rounded = decimal.Round(amount, MaxDecimals, MidpointRounding.AwayFromZero);
+        if (Math.Abs(amount - rounded) > 0.000_000_1m)
         {
             throw new DomainValidationException(
                 DomainErrors.Validation.AmountPrecision,
                 new Dictionary<string, object?> { ["maxDecimals"] = MaxDecimals });
         }
 
-        if (Math.Abs(amount) > MaxAbsoluteAmount)
+        if (Math.Abs(rounded) > MaxAbsoluteAmount)
         {
             throw new DomainValidationException(
                 DomainErrors.Validation.AmountOutOfRange,
                 new Dictionary<string, object?> { ["max"] = MaxAbsoluteAmount });
         }
 
-        return amount;
+        return rounded;
     }
 
     public Money Add(Money other)
