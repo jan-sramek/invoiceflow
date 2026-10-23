@@ -25,7 +25,7 @@ import { FieldErrorLike, applyFieldErrors } from '@shared/util';
 import { filter } from 'rxjs';
 import { InvoiceDetailStore } from '../data-access';
 import { AuditTimelineComponent, InvoiceFlagsComponent, InvoiceStatusChipComponent } from '../ui';
-import { formatAmountInput, parseAmountInput } from '../util/amount-input';
+import { formatAmountInput, parseAmountInput } from '../util';
 import { PaymentDialogComponent, PaymentDialogResult } from './payment-dialog.component';
 
 type FieldsFormValue = ReturnType<typeof toFormValue>;
