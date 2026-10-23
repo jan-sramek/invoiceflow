@@ -1,5 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
+  <PropertyGroup>
+    <!-- Same store as the API so local Windows secrets apply to both. -->
+    <UserSecretsId>invoiceflow-api-development</UserSecretsId>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\InvoiceFlow.Infrastructure\InvoiceFlow.Infrastructure.csproj" />
     <ProjectReference Include="..\InvoiceFlow.ServiceDefaults\InvoiceFlow.ServiceDefaults.csproj" />
