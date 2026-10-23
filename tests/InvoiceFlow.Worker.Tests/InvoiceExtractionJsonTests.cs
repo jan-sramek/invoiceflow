@@ -55,6 +55,37 @@ public class InvoiceExtractionJsonTests
         InvoiceExtractionJson.Parse("""{ "currency": "NOPE" }""").Currency.ShouldBeNull();
     }
 
+    [Theory]
+    [InlineData("$93.50", 93.50)]
+    [InlineData("93,50", 93.50)]
+    [InlineData("8,5", 8.5)]
+    [InlineData("1.234,56", 1234.56)]
+    [InlineData("1,234.56", 1234.56)]
+    [InlineData("USD 85.00", 85.00)]
+    [InlineData("1,234", 1234)]
+    public void TryParseAmountString_CommonInvoiceSpellings(string text, decimal expected)
+    {
+        InvoiceExtractionJson.TryParseAmountString(text, out decimal amount).ShouldBeTrue();
+        amount.ShouldBe(expected);
+    }
+
+    [Fact]
+    public void Parse_CurrencyFormattedAmountStrings_MapsCents()
+    {
+        InvoiceFields fields = InvoiceExtractionJson.Parse("""
+            {
+              "subtotal": "$85.00",
+              "taxAmount": "8,50",
+              "totalAmount": "$93.50",
+              "currency": "USD"
+            }
+            """);
+
+        fields.Subtotal.ShouldBe(85.00m);
+        fields.TaxAmount.ShouldBe(8.50m);
+        fields.TotalAmount.ShouldBe(93.50m);
+    }
+
     [Fact]
     public async Task StubExtractor_ReturnsSucceededEmpty()
     {

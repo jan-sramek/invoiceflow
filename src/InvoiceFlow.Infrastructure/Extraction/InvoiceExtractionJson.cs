@@ -154,10 +154,86 @@ internal static class InvoiceExtractionJson
         return property.ValueKind switch
         {
             JsonValueKind.Number when property.TryGetDecimal(out decimal number) => number,
-            JsonValueKind.String when decimal.TryParse(
-                property.GetString(), NumberStyles.Number, CultureInfo.InvariantCulture, out decimal parsed) => parsed,
+            JsonValueKind.String when TryParseAmountString(property.GetString(), out decimal parsed) => parsed,
+            // Models sometimes emit "$93.50" without quotes → invalid JSON; when coerced via ToString on other kinds, skip.
             _ => null,
         };
+    }
+
+    /// <summary>
+    /// Accepts plain numbers plus common invoice spellings: <c>$93.50</c>, <c>93,50</c>, <c>1.234,56</c>, <c>1,234.56</c>.
+    /// </summary>
+    internal static bool TryParseAmountString(string? text, out decimal amount)
+    {
+        amount = 0;
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        Span<char> buffer = stackalloc char[text.Length];
+        int length = 0;
+        foreach (char c in text.Trim())
+        {
+            if (c is '-' && length == 0)
+            {
+                buffer[length++] = c;
+                continue;
+            }
+
+            if (char.IsAsciiDigit(c) || c is '.' or ',')
+            {
+                buffer[length++] = c;
+            }
+        }
+
+        if (length == 0 || (length == 1 && buffer[0] == '-'))
+        {
+            return false;
+        }
+
+        string cleaned = new(buffer[..length]);
+        int lastDot = cleaned.LastIndexOf('.');
+        int lastComma = cleaned.LastIndexOf(',');
+
+        if (lastDot >= 0 && lastComma >= 0)
+        {
+            // Rightmost separator is the decimal; the other is thousands.
+            char decimalSep = lastDot > lastComma ? '.' : ',';
+            char thousandsSep = decimalSep == '.' ? ',' : '.';
+            cleaned = cleaned.Replace(thousandsSep.ToString(), "", StringComparison.Ordinal)
+                .Replace(decimalSep, '.');
+        }
+        else if (lastComma >= 0)
+        {
+            int digitsAfter = cleaned.Length - lastComma - 1;
+            // "1,234" (thousands) vs "93,50" / "8,5" (decimal).
+            bool thousands = digitsAfter == 3 && lastComma > 0;
+            if (thousands)
+            {
+                for (int i = 0; i < lastComma; i++)
+                {
+                    char c = cleaned[i];
+                    if (c == '-' && i == 0)
+                    {
+                        continue;
+                    }
+
+                    if (!char.IsAsciiDigit(c))
+                    {
+                        thousands = false;
+                        break;
+                    }
+                }
+            }
+
+            cleaned = thousands
+                ? cleaned.Replace(",", "", StringComparison.Ordinal)
+                : cleaned.Replace(',', '.');
+        }
+
+        return decimal.TryParse(
+            cleaned, NumberStyles.Number, CultureInfo.InvariantCulture, out amount);
     }
 
     private static bool TryGetString(JsonElement root, string name, out string? value)

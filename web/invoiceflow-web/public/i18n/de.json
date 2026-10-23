@@ -170,7 +170,7 @@
     "fieldStatus": {
       "Missing": "Fehlt",
       "Valid": "Sieht gut aus",
-      "Invalid": "Verstößt gegen eine Validierungsregel — bitte korrigieren",
+      "Invalid": "Erfüllt eine Prüfung nicht (z. B. Summe ≠ Netto + MwSt.) — bitte dieses Feld korrigieren",
       "Unverified": "Nicht im Dokumententext gefunden — bitte bestätigen"
     },
     "actions": {
@@ -230,6 +230,7 @@
       "duplicateHint": "Eine Rechnung mit derselben Datei existiert bereits.",
       "viewOriginal": "Original anzeigen",
       "fieldsHeading": "Rechnungsdetails",
+      "fieldsNeedAttention": "Diese Felder müssen vor dem Einreichen geprüft werden:",
       "language": "Dokumentensprache",
       "readOnly": "Diese Felder können in diesem Status nicht mehr bearbeitet werden.",
       "unsaved": "Ungespeicherte Änderungen",

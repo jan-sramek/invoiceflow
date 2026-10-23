@@ -141,6 +141,23 @@
       }
     }
 
+    @if (statusIssues().length > 0) {
+      <div class="banner error" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <div class="grow">
+          <p class="banner-title">{{ 'invoices.detail.fieldsNeedAttention' | transloco }}</p>
+          <ul>
+            @for (issue of statusIssues(); track issue.field) {
+              <li>
+                <strong>{{ issue.labelKey | transloco }}</strong>
+                — {{ issue.statusKey | transloco }}
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+    }
+
     @if (unmapped().length > 0) {
       <div class="banner error" role="alert">
         <mat-icon>error_outline</mat-icon>
@@ -161,52 +178,69 @@
           }
 
           <div class="fields">
-            <mat-form-field appearance="outline" class="span-2">
+            <mat-form-field
+              appearance="outline"
+              class="span-2"
+              [class.field-issue]="showFieldStatus(fieldStatus('supplierName'))"
+            >
               <mat-label>{{ 'invoices.fields.supplierName' | transloco }}</mat-label>
               <input matInput formControlName="supplierName" [readonly]="!editable()" />
               @if (showFieldStatus(fieldStatus('supplierName'))) {
-                <mat-hint>{{ 'invoices.fieldStatus.' + fieldStatus('supplierName')! | transloco }}</mat-hint>
+                <mat-hint class="field-issue-hint">{{
+                  'invoices.fieldStatus.' + fieldStatus('supplierName')! | transloco
+                }}</mat-hint>
               }
               <mat-error><if-field-error [control]="form.controls.supplierName" /></mat-error>
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" [class.field-issue]="showFieldStatus(fieldStatus('invoiceNumber'))">
               <mat-label>{{ 'invoices.fields.invoiceNumber' | transloco }}</mat-label>
               <input matInput formControlName="invoiceNumber" [readonly]="!editable()" />
               @if (showFieldStatus(fieldStatus('invoiceNumber'))) {
-                <mat-hint>{{ 'invoices.fieldStatus.' + fieldStatus('invoiceNumber')! | transloco }}</mat-hint>
+                <mat-hint class="field-issue-hint">{{
+                  'invoices.fieldStatus.' + fieldStatus('invoiceNumber')! | transloco
+                }}</mat-hint>
               }
               <mat-error><if-field-error [control]="form.controls.invoiceNumber" /></mat-error>
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field
+              appearance="outline"
+              [class.field-issue]="showFieldStatus(fieldStatus('purchaseOrderReference'))"
+            >
               <mat-label>{{ 'invoices.fields.purchaseOrderReference' | transloco }}</mat-label>
               <input matInput formControlName="purchaseOrderReference" [readonly]="!editable()" />
               @if (showFieldStatus(fieldStatus('purchaseOrderReference'))) {
-                <mat-hint>{{ 'invoices.fieldStatus.' + fieldStatus('purchaseOrderReference')! | transloco }}</mat-hint>
+                <mat-hint class="field-issue-hint">{{
+                  'invoices.fieldStatus.' + fieldStatus('purchaseOrderReference')! | transloco
+                }}</mat-hint>
               }
               <mat-error><if-field-error [control]="form.controls.purchaseOrderReference" /></mat-error>
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" [class.field-issue]="showFieldStatus(fieldStatus('invoiceDate'))">
               <mat-label>{{ 'invoices.fields.invoiceDate' | transloco }}</mat-label>
               <input matInput type="date" formControlName="invoiceDate" [readonly]="!editable()" />
               @if (showFieldStatus(fieldStatus('invoiceDate'))) {
-                <mat-hint>{{ 'invoices.fieldStatus.' + fieldStatus('invoiceDate')! | transloco }}</mat-hint>
+                <mat-hint class="field-issue-hint">{{
+                  'invoices.fieldStatus.' + fieldStatus('invoiceDate')! | transloco
+                }}</mat-hint>
               }
               <mat-error><if-field-error [control]="form.controls.invoiceDate" /></mat-error>
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" [class.field-issue]="showFieldStatus(fieldStatus('dueDate'))">
               <mat-label>{{ 'invoices.fields.dueDate' | transloco }}</mat-label>
               <input matInput type="date" formControlName="dueDate" [readonly]="!editable()" />
               @if (showFieldStatus(fieldStatus('dueDate'))) {
-                <mat-hint>{{ 'invoices.fieldStatus.' + fieldStatus('dueDate')! | transloco }}</mat-hint>
+                <mat-hint class="field-issue-hint">{{
+                  'invoices.fieldStatus.' + fieldStatus('dueDate')! | transloco
+                }}</mat-hint>
               }
               <mat-error><if-field-error [control]="form.controls.dueDate" /></mat-error>
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" [class.field-issue]="showFieldStatus(fieldStatus('currency'))">
               <mat-label>{{ 'invoices.fields.currency' | transloco }}</mat-label>
               <input
                 matInput
@@ -217,36 +251,68 @@
                 [readonly]="!editable()"
               />
               @if (showFieldStatus(fieldStatus('currency'))) {
-                <mat-hint>{{ 'invoices.fieldStatus.' + fieldStatus('currency')! | transloco }}</mat-hint>
+                <mat-hint class="field-issue-hint">{{
+                  'invoices.fieldStatus.' + fieldStatus('currency')! | transloco
+                }}</mat-hint>
               }
               <mat-error><if-field-error [control]="form.controls.currency" /></mat-error>
             </mat-form-field>
 
             <span class="spacer"></span>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" [class.field-issue]="showFieldStatus(fieldStatus('subtotal'))">
               <mat-label>{{ 'invoices.fields.subtotal' | transloco }}</mat-label>
-              <input matInput type="number" step="0.01" formControlName="subtotal" class="num" [readonly]="!editable()" />
+              <input
+                matInput
+                type="text"
+                inputmode="decimal"
+                autocomplete="off"
+                formControlName="subtotal"
+                class="num"
+                [readonly]="!editable()"
+              />
               @if (showFieldStatus(fieldStatus('subtotal'))) {
-                <mat-hint>{{ 'invoices.fieldStatus.' + fieldStatus('subtotal')! | transloco }}</mat-hint>
+                <mat-hint class="field-issue-hint">{{
+                  'invoices.fieldStatus.' + fieldStatus('subtotal')! | transloco
+                }}</mat-hint>
               }
               <mat-error><if-field-error [control]="form.controls.subtotal" /></mat-error>
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" [class.field-issue]="showFieldStatus(fieldStatus('taxAmount'))">
               <mat-label>{{ 'invoices.fields.taxAmount' | transloco }}</mat-label>
-              <input matInput type="number" step="0.01" formControlName="taxAmount" class="num" [readonly]="!editable()" />
+              <input
+                matInput
+                type="text"
+                inputmode="decimal"
+                autocomplete="off"
+                formControlName="taxAmount"
+                class="num"
+                [readonly]="!editable()"
+              />
               @if (showFieldStatus(fieldStatus('taxAmount'))) {
-                <mat-hint>{{ 'invoices.fieldStatus.' + fieldStatus('taxAmount')! | transloco }}</mat-hint>
+                <mat-hint class="field-issue-hint">{{
+                  'invoices.fieldStatus.' + fieldStatus('taxAmount')! | transloco
+                }}</mat-hint>
               }
               <mat-error><if-field-error [control]="form.controls.taxAmount" /></mat-error>
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" [class.field-issue]="showFieldStatus(fieldStatus('totalAmount'))">
               <mat-label>{{ 'invoices.fields.totalAmount' | transloco }}</mat-label>
-              <input matInput type="number" step="0.01" formControlName="totalAmount" class="num" [readonly]="!editable()" />
+              <input
+                matInput
+                type="text"
+                inputmode="decimal"
+                autocomplete="off"
+                formControlName="totalAmount"
+                class="num"
+                [readonly]="!editable()"
+              />
               @if (showFieldStatus(fieldStatus('totalAmount'))) {
-                <mat-hint>{{ 'invoices.fieldStatus.' + fieldStatus('totalAmount')! | transloco }}</mat-hint>
+                <mat-hint class="field-issue-hint">{{
+                  'invoices.fieldStatus.' + fieldStatus('totalAmount')! | transloco
+                }}</mat-hint>
               }
               <mat-error><if-field-error [control]="form.controls.totalAmount" /></mat-error>
             </mat-form-field>
