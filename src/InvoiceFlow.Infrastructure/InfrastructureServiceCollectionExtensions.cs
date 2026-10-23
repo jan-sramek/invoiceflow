@@ -96,7 +96,24 @@ public static class InfrastructureServiceCollectionExtensions
     private static void AddDocumentStorage(this IServiceCollection services, IConfiguration configuration)
     {
         IConfigurationSection section = configuration.GetSection(DocumentStorageOptions.SectionName);
-        if (!section.Exists() || string.IsNullOrWhiteSpace(section["ServiceUrl"]))
+        if (!section.Exists())
+        {
+            services.AddSingleton<IDocumentStorage, InMemoryDocumentStorage>();
+            return;
+        }
+
+        // RootPath: shared disk for local API + Worker (InMemory is process-local and breaks extraction).
+        if (!string.IsNullOrWhiteSpace(section["RootPath"]))
+        {
+            services.AddOptions<FileSystemDocumentStorageOptions>()
+                .Bind(section)
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+            services.AddSingleton<IDocumentStorage, FileSystemDocumentStorage>();
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(section["ServiceUrl"]))
         {
             services.AddSingleton<IDocumentStorage, InMemoryDocumentStorage>();
             return;
