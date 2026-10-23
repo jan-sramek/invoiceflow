@@ -1,5 +1,8 @@
 @use '@angular/material' as mat;
 
+// Plain UI typeface — Arial/Helvetica, no display or system-variable stacks.
+$if-font-family: Arial, Helvetica, sans-serif;
+
 // Angular Material M3 theme: azure primary, blue tertiary. Component-level look is tuned with the --if-* tokens below.
 html {
   @include mat.theme(
@@ -10,8 +13,8 @@ html {
         tertiary: mat.$blue-palette,
       ),
       typography: (
-        plain-family: ('Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif),
-        brand-family: ('Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif),
+        plain-family: $if-font-family,
+        brand-family: $if-font-family,
         bold-weight: 700,
         medium-weight: 600,
         regular-weight: 400,
@@ -80,6 +83,7 @@ body {
   margin: 0;
   background: var(--if-bg);
   color: var(--if-text);
+  font-family: $if-font-family;
   font-size: 14px;
   line-height: 1.5;
 }
